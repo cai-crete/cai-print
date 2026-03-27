@@ -1,0 +1,240 @@
+<!DOCTYPE html>
+<html lang="ko">
+
+<head>
+    <meta charset="UTF-8">
+    <title>Cre-te A3 Architecture Master - Vive Ready v14.1</title>
+    <style>
+        @import url('https://cdn.jsdelivr.net/gh/projectnoonnu/noonfonts_six@1.2/S-CoreDream-2ExtraLight.woff');
+        @import url('https://cdn.jsdelivr.net/gh/projectnoonnu/noonfonts_six@1.2/S-CoreDream-5Medium.woff');
+        @import url('https://cdn.jsdelivr.net/gh/projectnoonnu/noonfonts_six@1.2/S-CoreDream-8Heavy.woff');
+
+        :root {
+            --page-w: 420mm;
+            --page-h: 297mm;
+            --axis-color: #ff0000;
+            --border-thick: 1.5pt solid #000;
+            --border-thin: 0.5pt solid #000;
+        }
+
+        body {
+            background: #1a1a1a;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            padding: 40px;
+            font-family: 'S-CoreDream', sans-serif;
+        }
+
+        .page {
+            position: relative;
+            width: var(--page-w);
+            height: var(--page-h);
+            background: #fff;
+            flex-shrink: 0;
+            box-sizing: border-box;
+            overflow: hidden;
+            padding: 7mm;
+        }
+
+        .outer-frame {
+            width: 100%;
+            height: 100%;
+            border: var(--border-thick);
+            display: flex;
+            box-sizing: border-box;
+        }
+
+        .drawing-area {
+            flex: 1;
+            border-right: var(--border-thick);
+            position: relative;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .axis-v {
+            position: absolute;
+            left: 50%;
+            top: 0;
+            width: 1px;
+            height: 100%;
+            background: var(--axis-color);
+            z-index: 10;
+        }
+
+        .axis-h {
+            position: absolute;
+            top: 50%;
+            left: 0;
+            width: 100%;
+            height: 1px;
+            background: var(--axis-color);
+            z-index: 10;
+        }
+
+        /* 도각 영역 */
+        .title-block {
+            width: 40mm;
+            height: 100%;
+            display: flex;
+            flex-direction: column;
+            background: #fff;
+        }
+
+        .tb-section {
+            border-bottom: var(--border-thick);
+            padding: 2mm 3mm;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .tb-label {
+            font-family: 'S-CoreDream-8Heavy';
+            font-size: 5.5pt;
+            color: #000;
+            text-transform: uppercase;
+            margin-bottom: 1mm;
+        }
+
+        .tb-value {
+            font-family: 'S-CoreDream-5Medium';
+            font-size: 8pt;
+            min-height: 10pt;
+            outline: none;
+        }
+
+        /* 로고 섹션: 정중앙 배치 */
+        .logo-section {
+            height: 35mm;
+            border-bottom: var(--border-thick);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            text-align: center;
+            padding: 0 2mm;
+        }
+
+        .logo-text {
+            font-family: 'S-CoreDream-8Heavy';
+            font-size: 20pt;
+            line-height: 1;
+            letter-spacing: -1.5px;
+            margin-bottom: 2mm;
+        }
+
+        .logo-sub {
+            font-size: 5pt;
+            font-weight: 900;
+            margin-bottom: 2mm;
+        }
+
+        .logo-info {
+            font-size: 4pt;
+            line-height: 1.4;
+            color: #333;
+        }
+
+        /* 메타데이터 섹션 */
+        .meta-section {
+            border-bottom: var(--border-thin);
+            padding: 1.5mm 3mm;
+        }
+
+        .meta-section .tb-label {
+            font-size: 5pt;
+        }
+
+        .meta-section .tb-value {
+            font-size: 7.5pt;
+        }
+
+        .meta-section.last {
+            border-bottom: var(--border-thick);
+        }
+
+        .drawing-no {
+            font-family: 'S-CoreDream-8Heavy' !important;
+            font-size: 14pt !important;
+        }
+
+        [contenteditable="true"]:hover {
+            background: rgba(0, 184, 148, 0.05);
+        }
+    </style>
+</head>
+
+<body>
+    <div class="page">
+        <div class="outer-frame">
+            <div class="drawing-area">
+                <div class="axis-v"></div>
+                <div class="axis-h"></div>
+
+                <div id="VIVE_IMAGE_PIVOT"
+                    style="position: absolute; width: 0; height: 0; display: flex; align-items: center; justify-content: center; z-index: 100;">
+                </div>
+            </div>
+
+            <div class="title-block">
+                <div class="tb-section" style="height: 12mm;">
+                    <div class="tb-label">PROJECT TITLE</div>
+                    <div class="tb-value" contenteditable="true">AI ARCHITECTURE HUB 2026</div>
+                </div>
+                <div class="logo-section">
+                    <div class="logo-text">CRE-TE</div>
+                    <div class="logo-sub">CREATIVE TEMPERATURE</div>
+                    <div class="logo-info">24-1, NONHYUN-RO 123GIL,<br>GANGNAM-GU, SEOUL, KOREA<br>WWW.CRE-TE.COM</div>
+                </div>
+                <div class="tb-section" style="flex: 1;">
+                    <div class="tb-label">NOTE</div>
+                    <div class="tb-value" contenteditable="true" style="font-size: 6pt;">1. ALL DIMENSIONS ARE IN
+                        MM.<br>2. DO NOT SCALE DRAWINGS.</div>
+                </div>
+
+                <div class="meta-section">
+                    <div class="tb-label">DESIGNED BY</div>
+                    <div class="tb-value" contenteditable="true">CRETE-AI</div>
+                </div>
+                <div class="meta-section">
+                    <div class="tb-label">ARCHITECTURAL ENGINEER</div>
+                    <div class="tb-value" contenteditable="true">YONGSU. LEE</div>
+                </div>
+                <div class="meta-section">
+                    <div class="tb-label">APPROVED BY</div>
+                    <div class="tb-value" contenteditable="true">CRETE GROUP</div>
+                </div>
+                <div class="meta-section">
+                    <div class="tb-label">SCALE</div>
+                    <div class="tb-value" contenteditable="true">1/100</div>
+                </div>
+                <div class="meta-section">
+                    <div class="tb-label">DRAWING NO.</div>
+                    <div class="tb-value drawing-no" contenteditable="true">A-101</div>
+                </div>
+                <div class="meta-section last">
+                    <div class="tb-label">SHEET NO.</div>
+                    <div class="tb-value" contenteditable="true">01 / 10</div>
+                </div>
+                <div class="tb-section" style="border-bottom: none;">
+                    <div class="tb-label">FILE NAME</div>
+                    <div class="tb-value" contenteditable="true">P_260323_H01.dwg</div>
+                </div>
+            </div>
+        </div>
+    </div>
+    <script>
+        function fitToScreen() {
+            const page = document.querySelector('.page');
+            const scale = (window.innerWidth - 80) / (420 * 3.78);
+            page.style.transform = `scale(${scale > 1 ? 1 : scale})`;
+            page.style.transformOrigin = 'top center';
+        }
+        window.addEventListener('resize', fitToScreen);
+        window.addEventListener('load', fitToScreen);
+    </script>
+</body>
+
+</html>

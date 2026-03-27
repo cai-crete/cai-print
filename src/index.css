@@ -1,0 +1,31 @@
+@import "tailwindcss";
+
+@font-face {
+  font-family: 'KoPub Batang';
+  src: url('/fonts/KoPub Batang Medium.ttf') format('truetype');
+}
+
+@font-face {
+  font-family: 'KoPub Dotum';
+  src: url('/fonts/KoPub Dotum Medium.ttf') format('truetype');
+}
+
+@font-face {
+  font-family: 'S-Core Dream';
+  src: url('/fonts/SCDream5.otf') format('opentype');
+}
+
+@font-face {
+  font-family: 'Pretendard';
+  src: url('/fonts/Pretendard-Regular.otf') format('opentype');
+}
+
+@font-face {
+  font-family: 'Noto Sans KR';
+  src: url('/fonts/NotoSansKR-Regular.ttf') format('truetype');
+}
+
+@font-face {
+  font-family: 'Gmarket Sans';
+  src: url('/fonts/GmarketSansTTFMedium.ttf') format('truetype');
+}

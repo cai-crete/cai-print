@@ -1,0 +1,334 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Cre-te Report Templates (AI-Ready Architecture)</title>
+    <style>
+        /* =================================================================
+       [공통 페이지 및 A3 규격 설정]
+       ================================================================= */
+        :root {
+            --page-w: 420mm;
+            --page-h: 297mm;
+            --line-color: rgba(255, 0, 0, 0.25);
+            /* 빨간색 축열선 가이드 */
+        }
+
+        body {
+            background: #2b2b2b;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            padding: 40px;
+            gap: 50px;
+            font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;
+        }
+
+        .page {
+            position: relative;
+            width: var(--page-w);
+            height: var(--page-h);
+            background: #fff;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
+            flex-shrink: 0;
+            box-sizing: border-box;
+            overflow: hidden;
+        }
+
+        /* -----------------------------------------------------------------
+       [하단 공통 Footer (배경 이미지화)]
+       ----------------------------------------------------------------- */
+        .bg-footer-left {
+            position: absolute;
+            left: 13mm;
+            top: 281mm;
+            z-index: 1;
+            pointer-events: none;
+            user-select: none;
+        }
+
+        .bg-footer-right {
+            position: absolute;
+            left: 287mm;
+            top: 281mm;
+            width: 119mm;
+            text-align: right;
+            line-height: 1.4;
+            z-index: 1;
+            pointer-events: none;
+            user-select: none;
+        }
+
+        .bg-footer-right .copy {
+            font-size: 7.5pt;
+            color: #999;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        /* -----------------------------------------------------------------
+       [그리드(축열) 레이어 설정]
+       ----------------------------------------------------------------- */
+        .grid-container {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            display: grid;
+            z-index: 20;
+        }
+
+        .guide-layer {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            display: grid;
+            z-index: 10;
+            pointer-events: none;
+        }
+
+        .guide-box {
+            border-right: 1px dashed var(--line-color);
+            border-bottom: 1px dashed var(--line-color);
+            box-sizing: border-box;
+        }
+
+        /* -----------------------------------------------------------------
+       [에디터 스타일 및 타이포그래피]
+       ----------------------------------------------------------------- */
+        [contenteditable="true"] {
+            outline: none;
+            cursor: text;
+            transition: 0.2s;
+        }
+
+        [contenteditable="true"]:hover {
+            box-shadow: 0 0 0 1px #00b894;
+            background: rgba(0, 184, 148, 0.05);
+        }
+
+        .t-main {
+            font-size: 50pt;
+            font-weight: 900;
+            letter-spacing: -1.5px;
+            line-height: 1;
+            color: #000;
+            align-self: end;
+        }
+
+        .t-body {
+            font-size: 10.5pt;
+            line-height: 1.6;
+            color: #555;
+            align-self: stretch;
+            overflow: hidden;
+        }
+
+        .img-box {
+            background: #e6e6e6;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            font-size: 13pt;
+            color: #333;
+            text-align: center;
+            line-height: 1.4;
+            width: 100%;
+            height: 100%;
+        }
+    </style>
+</head>
+
+<body>
+
+    <script>
+        const pagesData = [
+            // =================================================================
+            // [Page 1] 표지
+            // =================================================================
+            {
+                cols: "118mm 16mm 266mm 7mm 13mm",
+                rows: "34mm 89mm 7mm 25mm 111mm 12mm 19mm",
+                html: `
+                <div contenteditable="true" style="grid-column: 2 / 5; grid-row: 2; text-align: right; font-size: 110pt; font-weight: 900; line-height: 0.9; letter-spacing: -3px; color: #000;">
+                    This is the<br>title
+                </div>
+                <div contenteditable="true" style="grid-column: 2 / 5; grid-row: 4; text-align: right; font-size: 42pt; font-weight: 500; letter-spacing: -1px; color: #000;">
+                    There's a subtitle, too
+                </div>
+                <div contenteditable="true" style="grid-column: 3 / 5; grid-row: 6; text-align: right; font-size: 12pt; font-weight: bold; color: #000;">
+                    CAI (CRETE-AI) &nbsp;|&nbsp; info@cre-te.com
+                </div>
+            `
+            },
+            // =================================================================
+            // [Page 2] 목차
+            // =================================================================
+            {
+                cols: "22mm 118mm 11mm 118mm 12mm 118mm 21mm",
+                rows: "34mm 21mm 151mm 23mm 12mm 23mm 33mm",
+                html: `
+                <div class="t-main" contenteditable="true" style="grid-column: 2 / 7; grid-row: 2; align-self: start;">Contents</div>
+                
+                <div contenteditable="true" style="grid-column: 2; grid-row: 4; display: flex; gap: 15px; align-self: start;">
+                    <div style="font-size: 45pt; font-weight: 900; line-height: 0.75; letter-spacing: -2px; color: #000;">01</div>
+                    <div><div style="font-size: 18pt; font-weight: 900; color: #000;">Topic of the contents</div><div style="font-size: 12pt; color: #999;">Enter a brief description.</div></div>
+                </div>
+                <div contenteditable="true" style="grid-column: 4; grid-row: 4; display: flex; gap: 15px; align-self: start;">
+                    <div style="font-size: 45pt; font-weight: 900; line-height: 0.75; letter-spacing: -2px; color: #000;">02</div>
+                    <div><div style="font-size: 18pt; font-weight: 900; color: #000;">Topic of the contents</div><div style="font-size: 12pt; color: #999;">Enter a brief description.</div></div>
+                </div>
+                <div contenteditable="true" style="grid-column: 6; grid-row: 4; display: flex; gap: 15px; align-self: start;">
+                    <div style="font-size: 45pt; font-weight: 900; line-height: 0.75; letter-spacing: -2px; color: #000;">03</div>
+                    <div><div style="font-size: 18pt; font-weight: 900; color: #000;">Topic of the contents</div><div style="font-size: 12pt; color: #999;">Enter a brief description.</div></div>
+                </div>
+
+                <div contenteditable="true" style="grid-column: 2; grid-row: 6; display: flex; gap: 15px; align-self: start;">
+                    <div style="font-size: 45pt; font-weight: 900; line-height: 0.75; letter-spacing: -2px; color: #000;">04</div>
+                    <div><div style="font-size: 18pt; font-weight: 900; color: #000;">Topic of the contents</div><div style="font-size: 12pt; color: #999;">Enter a brief description.</div></div>
+                </div>
+                <div contenteditable="true" style="grid-column: 4; grid-row: 6; display: flex; gap: 15px; align-self: start;">
+                    <div style="font-size: 45pt; font-weight: 900; line-height: 0.75; letter-spacing: -2px; color: #000;">05</div>
+                    <div><div style="font-size: 18pt; font-weight: 900; color: #000;">Topic of the contents</div><div style="font-size: 12pt; color: #999;">Enter a brief description.</div></div>
+                </div>
+                <div contenteditable="true" style="grid-column: 6; grid-row: 6; display: flex; gap: 15px; align-self: start;">
+                    <div style="font-size: 45pt; font-weight: 900; line-height: 0.75; letter-spacing: -2px; color: #000;">06</div>
+                    <div><div style="font-size: 18pt; font-weight: 900; color: #000;">Topic of the contents</div><div style="font-size: 12pt; color: #999;">Enter a brief description.</div></div>
+                </div>
+            `
+            },
+            // =================================================================
+            // [Page 3] 본문 - 단일 이미지
+            // =================================================================
+            {
+                cols: "21mm 261mm 10mm 107mm 21mm",
+                rows: "34mm 21mm 17mm 196mm 29mm",
+                html: `
+                <div class="t-main" contenteditable="true" style="grid-column: 2 / 5; grid-row: 2; align-self: start;">00 &nbsp;Topic of the contents</div>
+                <div class="img-box" style="grid-column: 2; grid-row: 4;">이미지 또는 텍스트를 삽입하세요.<br>(4:3)</div>
+                
+                <div style="grid-column: 4; grid-row: 4; display: flex; flex-direction: column; justify-content: flex-end; align-items: flex-start; gap: 20px; height: 100%; overflow: hidden;">
+                    
+                    <div class="t-sub" contenteditable="true" style="font-size: 12pt; font-weight: bold; line-height: 1.5; color: #000; width: 100%; flex-shrink: 0;">
+                        여기에는 이 건축 프로젝트를 관통하는 단 하나의 핵심 철학이나 메인 슬로건이 1~2줄로 짧고 강렬하게 들어가면 좋습니다.
+                    </div>
+                    
+                    <div class="t-body" contenteditable="true" style="width: 100%;">
+                        여기에는 메인 타이틀을 뒷받침하며, 프로젝트의 성격(주거, 상업, 복합문화공간 등), 대지의 위치적 특성, 또는 가장 중요한 디자인 모티브를 2~3줄 정도로 요약한 텍스트가 들어가면 좋습니다. * 방문자가 앞으로 소개될 건축물이 어떤 목적과 가치를 지니고 있는지 대략적으로 파악할 수 있도록 안내하는 역할을 합니다.
+                    </div>
+                    
+                </div>
+            `
+            },
+            // =================================================================
+            // [Page 4] 본문 - 2분할
+            // =================================================================
+            {
+                cols: "21mm 38mm 147mm 8mm 185mm 21mm",
+                rows: "34mm 21mm 17mm 10mm 15mm 6mm 139mm 5mm 21mm 29mm",
+                html: `
+                <div class="t-main" contenteditable="true" style="grid-column: 2 / 6; grid-row: 2; align-self: start;">00 &nbsp;Topic of the contents</div>
+                
+                <div contenteditable="true" style="grid-column: 2; grid-row: 4; background: #000; color: #fff; font-size: 14pt; font-weight: bold; display: inline-flex; align-items: center; justify-content: center; justify-self: start; align-self: start; padding: 4px 15px; letter-spacing: 0.5px;">Process</div>
+                <div class="t-body" contenteditable="true" style="grid-column: 3 / 6; grid-row: 4 / 6; padding-left: 15px;">전체적인 진행 과정을 한눈에 파악할 수 있는 단계별 설명이 들어갑니다.<br>기획부터 설계 완료까지의 흐름이나 핵심 건축 포인트를 보여주는 용도로 활용해 보세요.<br>총 3줄까지 작성 가능합니다. 중요한 3가지 핵심 디자인 포인트를 나열하여 설명하세요.</div>
+                
+                <div class="img-box" style="grid-column: 2 / 4; grid-row: 7;">이미지 또는 텍스트를 삽입하세요.<br>(4:3)</div>
+                <div class="img-box" style="grid-column: 5; grid-row: 7;">이미지 또는 텍스트를 삽입하세요.<br>(4:3)</div>
+                
+                <div class="t-body" contenteditable="true" style="grid-column: 2 / 4; grid-row: 9;">과정, 순서 등 흐름이 있는 내용 (Process / Timeline), 비교하는 내용 (Before-after / A-B), 단순 나열이 들어갑니다.<br>A 이미지에 대한 설명이 간단하게 3줄 정도 들어갑니다. 텍스트 세로맞춤은 아래쪽입니다.</div>
+                <div class="t-body" contenteditable="true" style="grid-column: 5; grid-row: 9;">간단한 설명의 주제 문구가 들어갑니다.<br>여기는 B 이미지에 대한 설명이 간단하게 3줄 정도 들어갑니다. 텍스트를 입력하세요. 제목 1줄 + 내용 2줄 구성도 괜찮을 것 같습니다.</div>
+            `
+            },
+            // =================================================================
+            // [Page 5] 본문 - 3분할
+            // =================================================================
+            {
+                cols: "21mm 38mm 82mm 9mm 120mm 9mm 120mm 21mm",
+                rows: "34mm 21mm 17mm 10mm 15mm 17mm 120mm 5mm 29mm 29mm",
+                html: `
+                <div class="t-main" contenteditable="true" style="grid-column: 2 / 8; grid-row: 2; align-self: start;">00 &nbsp;Topic of the contents</div>
+                
+                <div contenteditable="true" style="grid-column: 2; grid-row: 4; background: #000; color: #fff; font-size: 14pt; font-weight: bold; display: inline-flex; align-items: center; justify-content: center; justify-self: start; align-self: start; padding: 4px 15px; letter-spacing: 0.5px;">Process</div>
+                <div class="t-body" contenteditable="true" style="grid-column: 3 / 8; grid-row: 4 / 6; padding-left: 15px;">전체적인 진행 과정을 한눈에 파악할 수 있는 단계별 설명이 들어갑니다.<br>기획부터 설계 완료까지의 흐름이나 핵심 건축 포인트를 보여주는 용도로 활용해 보세요.<br>총 3줄까지 작성 가능합니다. 중요한 3가지 핵심 디자인 포인트를 나열하여 설명하세요.</div>
+
+                <div class="img-box" style="grid-column: 2 / 4; grid-row: 7;">삽입<br>(1:1)</div>
+                <div class="img-box" style="grid-column: 5; grid-row: 7;">삽입<br>(1:1)</div>
+                <div class="img-box" style="grid-column: 7; grid-row: 7;">삽입<br>(1:1)</div>
+
+                <div class="t-body" contenteditable="true" style="grid-column: 2 / 4; grid-row: 9;">이곳은 건축 프로젝트의 전반적인 개요부터 세부적인 디자인 의도까지 심도 있는 내용을 담아내기 위해 마련된 텍스트 전용 공간입니다. 감각적인 효과에 대해서도 밀도 있게 작성해 보십시오.</div>
+                <div class="t-body" contenteditable="true" style="grid-column: 5; grid-row: 9;">이처럼 다양한 텍스트들이 모여 하나의 완성된 문단을 이룰 때, 페이지의 전체적인 레이아웃은 더 안정적이고 전문적인 인상을 주게 됩니다.</div>
+                <div class="t-body" contenteditable="true" style="grid-column: 7; grid-row: 9;">텍스트의 분량이 지금처럼 많아질 경우에는 읽는 이의 가독성을 해치지 않도록 줄 간격과 자간을 시원하게 확보하는 타이포그래피 설정이 필수입니다.</div>
+            `
+            }
+        ];
+
+        function renderPages() {
+            const body = document.body;
+            const wrapper = document.createElement('div');
+            wrapper.id = 'preview-wrapper';
+            wrapper.style.display = 'flex'; wrapper.style.flexDirection = 'column'; wrapper.style.gap = '50px';
+
+            pagesData.forEach(p => {
+                const page = document.createElement('div');
+                page.className = 'page';
+
+                const bgFooter = document.createElement('div');
+                bgFooter.innerHTML = `
+                <div class="bg-footer-left">
+                    <img src="image_3b0126.png" style="width:14mm; height:6mm;" alt="CRE-TE">
+                </div>
+                <div class="bg-footer-right">
+                    <div class="copy">COPYRIGHTS 2026. CRETE CO.,LTD. ALL RIGHTS RESERVED.</div>
+                </div>
+            `;
+                page.appendChild(bgFooter);
+
+                const gridStyle = `grid-template-columns: ${p.cols}; grid-template-rows: ${p.rows};`;
+
+                const guides = document.createElement('div');
+                guides.className = 'guide-layer';
+                guides.style.cssText = gridStyle;
+
+                const numCols = p.cols.split(' ').length;
+                const numRows = p.rows.split(' ').length;
+                for (let i = 0; i < numCols * numRows; i++) {
+                    const cell = document.createElement('div');
+                    cell.className = 'guide-box';
+                    guides.appendChild(cell);
+                }
+                page.appendChild(guides);
+
+                const content = document.createElement('div');
+                content.className = 'grid-container';
+                content.style.cssText = gridStyle;
+                content.innerHTML = p.html;
+                page.appendChild(content);
+
+                wrapper.appendChild(page);
+            });
+
+            body.appendChild(wrapper);
+            fitToScreen();
+        }
+
+        function fitToScreen() {
+            const wrapper = document.getElementById('preview-wrapper');
+            const contentWidth = (420 * 3.779527) + 80;
+            let scale = window.innerWidth / contentWidth;
+            if (scale > 1) scale = 1;
+            wrapper.style.transform = `scale(${scale})`;
+            wrapper.style.transformOrigin = 'top center';
+        }
+
+        window.addEventListener('resize', fitToScreen);
+        window.addEventListener('load', renderPages);
+    </script>
+</body>
+
+</html>

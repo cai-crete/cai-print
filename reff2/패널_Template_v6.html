@@ -1,0 +1,175 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<title>Cre-te A0 Panels - Split Subtitles & Auto-Scaling v7.0</title>
+<style>
+    @import url('https://cdn.jsdelivr.net/gh/projectnoonnu/noonfonts_six@1.2/S-CoreDream-2ExtraLight.woff');
+    @import url('https://cdn.jsdelivr.net/gh/projectnoonnu/noonfonts_six@1.2/S-CoreDream-5Medium.woff');
+    @import url('https://cdn.jsdelivr.net/gh/projectnoonnu/noonfonts_six@1.2/S-CoreDream-8Heavy.woff');
+
+    :root { --line-color: rgba(255, 0, 0, 0.85); }
+
+    body { background: #000; display: flex; flex-direction: column; align-items: center; padding: 60px; gap: 120px; font-family: 'S-CoreDream', sans-serif; }
+    .page { position: relative; background: #fff; box-shadow: 0 40px 120px rgba(0,0,0,1); flex-shrink: 0; box-sizing: border-box; overflow: hidden; }
+
+    /* [교정] 상하 여백 완벽 대칭 */
+    .a0-landscape { width: 1189mm; height: 841mm; padding: 20mm 25mm 20mm 25mm; }
+    .a0-portrait { width: 841mm; height: 1189mm; padding: 25mm 20mm 25mm 20mm; }
+
+    .grid-container { width: 100%; height: 100%; display: grid; z-index: 20; gap: 10mm; }
+    
+    .guide-layer { position: absolute; width: calc(100% - 50mm); height: calc(100% - 40mm); top: 20mm; left: 25mm; display: grid; z-index: 30; pointer-events: none; gap: 10mm; }
+    .a0-portrait .guide-layer { position: absolute; width: calc(100% - 40mm); height: calc(100% - 50mm); top: 25mm; left: 20mm; display: grid; z-index: 30; pointer-events: none; gap: 10mm; }
+    .guide-box { border: 2.5px dashed var(--line-color); box-sizing: border-box; }
+
+    /* 텍스트 컨테이너 및 패딩 설정 */
+    .text-cell { overflow: hidden; display: flex; flex-direction: column; position: relative; }
+    .padded-cell { padding: 10mm; background: rgba(0,0,0,0.02); }
+
+    [contenteditable="true"] { outline: none; cursor: text; }
+    [contenteditable="true"]:hover { background: rgba(0, 184, 148, 0.05); }
+
+    .t-heavy { font-family: 'S-CoreDream-8Heavy'; font-weight: 900; line-height: 1.0; letter-spacing: -4px; color: #000; align-self: start; white-space: nowrap; }
+    .t-medium { font-family: 'S-CoreDream-5Medium'; font-weight: 500; line-height: 1.1; color: #000; align-self: start; }
+    .t-light { font-family: 'S-CoreDream-2ExtraLight'; font-weight: 200; line-height: 1.6; color: #333; align-self: stretch; text-align: justify; }
+
+    .img-box { background: #f2f2f2; display: flex; align-items: center; justify-content: center; font-size: 35pt; color: #ccc; font-weight: 900; width: 100%; height: 100%; text-align: center; }
+</style>
+</head>
+<body>
+
+<script>
+    const pagesData = [
+        // =================================================================
+        // [1P] 가로형: 기본 포맷
+        // =================================================================
+        {
+            type: "a0-landscape",
+            cols: "373mm 373mm 181.5mm 181.5mm", 
+            rows: "75mm 45mm 130mm 25mm 195mm 281mm", 
+            html: `
+                <div class="img-box" style="grid-column: 1 / 3; grid-row: 1 / 6;">MAIN PERSPECTIVE IMAGE</div>
+                
+                <div class="text-cell" style="grid-column: 3 / 5; grid-row: 1;">
+                    <div class="t-heavy autoscale" contenteditable="true" style="font-size: 140pt;">THIS IS THE TITLE</div>
+                </div>
+                <div class="text-cell" style="grid-column: 3 / 5; grid-row: 2;">
+                    <div class="t-medium autoscale" contenteditable="true" style="font-size: 90pt; color: #555;">There's a subtitle, too</div>
+                </div>
+                
+                <div class="t-light" contenteditable="true" style="grid-column: 3 / 5; grid-row: 3; font-size: 30pt;">이곳은 프로젝트의 진정한 시작을 알리고, 건축이 품고 있는 본질적인 철학을 조명하는 프롤로그 영역입니다. 대지의 기억을 이해하는 것에서 출발했습니다.</div>
+                
+                <div class="t-medium" contenteditable="true" style="grid-column: 3 / 4; grid-row: 4; font-size: 35pt;">소제목을 적어주세요.</div>
+                <div class="t-medium" contenteditable="true" style="grid-column: 4 / 5; grid-row: 4; font-size: 35pt;">소제목을 적어주세요.</div>
+
+                <div class="t-light" contenteditable="true" style="grid-column: 3 / 4; grid-row: 5; font-size: 19pt;">공간의 시퀀스와 시선의 변화를 스토리텔링 방식으로 서술하여 프레젠테이션의 몰입도를 극대화합니다.</div>
+                <div class="t-light" contenteditable="true" style="grid-column: 4 / 5; grid-row: 5; font-size: 19pt;">건축 프로젝트의 전반적인 개요부터 세부적인 디자인 의도까지 심도 있는 내용을 담아내기 위한 공간입니다.</div>
+
+                <div class="img-box" style="grid-column: 3; grid-row: 6;">DETAIL 01</div>
+                <div class="img-box" style="grid-column: 4; grid-row: 6;">DETAIL 02</div>
+
+                <div class="img-box" style="grid-column: 1; grid-row: 6;">SUB IMAGE A</div>
+                <div class="img-box" style="grid-column: 2; grid-row: 6;">SUB IMAGE B</div>
+            `
+        },
+        // =================================================================
+        // [2P] 세로형: 1P 포맷에 맞춰 소제목/본문 행(Row) 분할 교정
+        // =================================================================
+        {
+            type: "a0-portrait",
+            cols: "repeat(4, 192.5mm)", 
+            // 행 분할: 150mm를 1P와 동일하게 25mm(소제목) + 115mm(본문)로 쪼개어 독립시킴
+            rows: "75mm 45mm 74mm 25mm 115mm 25mm 115mm 190mm 395mm", 
+            html: `
+                <div class="text-cell" style="grid-column: 1 / 5; grid-row: 1;">
+                    <div class="t-heavy autoscale" contenteditable="true" style="font-size: 140pt;">THIS IS THE TITLE</div>
+                </div>
+                <div class="text-cell" style="grid-column: 1 / 5; grid-row: 2;">
+                    <div class="t-medium autoscale" contenteditable="true" style="font-size: 90pt; color: #555;">There's a subtitle, too</div>
+                </div>
+                
+                <div class="text-cell" style="grid-column: 1 / 5; grid-row: 3;">
+                    <div class="t-light autoscale" contenteditable="true" style="font-size: 26pt;">이곳은 프로젝트의 진정한 시작을 알리고, 건축이 품고 있는 본질적인 철학을 조명하는 프롤로그 영역입니다. 단순히 물리적인 구조물을 세우는 것을 넘어 제안합니다.</div>
+                </div>
+
+                <div class="img-box" style="grid-column: 1 / 4; grid-row: 4 / 8;">MAIN CORE IMAGE</div>
+                
+                <div class="t-medium" contenteditable="true" style="grid-column: 4; grid-row: 4; font-size: 35pt;">소제목 A</div>
+                <div class="t-light autoscale" contenteditable="true" style="grid-column: 4; grid-row: 5; font-size: 19pt;">공간의 시퀀스와 시선의 변화를 서술하여 몰입도를 극대화합니다.</div>
+
+                <div class="t-medium" contenteditable="true" style="grid-column: 4; grid-row: 6; font-size: 35pt;">소제목 B</div>
+                <div class="t-light autoscale" contenteditable="true" style="grid-column: 4; grid-row: 7; font-size: 19pt;">디자인 의도와 기획 단계의 고민을 담아내기 위한 독립된 칸입니다.</div>
+
+                <div class="img-box" style="grid-column: 1; grid-row: 8;">IMG 1</div>
+                <div class="img-box" style="grid-column: 2; grid-row: 8;">IMG 2</div>
+                <div class="img-box" style="grid-column: 3; grid-row: 8;">IMG 3</div>
+                <div class="img-box" style="grid-column: 4; grid-row: 8;">IMG 4</div>
+
+                <div class="img-box" style="grid-column: 1 / 3; grid-row: 9;">LARGE PLAN AREA</div>
+                <div class="img-box" style="grid-column: 3 / 5; grid-row: 9;">LARGE DIAGRAM AREA</div>
+            `
+        }
+    ];
+
+    function applyAutoScaling() {
+        const elements = document.querySelectorAll('.autoscale');
+        elements.forEach(el => {
+            const parent = el.parentElement;
+            let fontSize = parseInt(window.getComputedStyle(el).fontSize);
+            while ((el.scrollWidth > parent.clientWidth || el.scrollHeight > parent.clientHeight) && fontSize > 10) {
+                fontSize--;
+                el.style.fontSize = fontSize + 'pt';
+            }
+        });
+    }
+
+    function renderPages() {
+        const body = document.body;
+        pagesData.forEach(p => {
+            const page = document.createElement('div');
+            page.className = `page ${p.type}`;
+            const gridStyle = `grid-template-columns: ${p.cols}; grid-template-rows: ${p.rows};`;
+
+            const content = document.createElement('div');
+            content.className = 'grid-container';
+            content.style.cssText = gridStyle;
+            content.innerHTML = p.html;
+            page.appendChild(content);
+
+            const guides = document.createElement('div');
+            guides.className = 'guide-layer';
+            guides.style.cssText = gridStyle;
+            
+            const regex = /grid-column:\s*([^;]+);\s*grid-row:\s*([^;]+);/g;
+            let match;
+            while ((match = regex.exec(p.html)) !== null) {
+                const cell = document.createElement('div');
+                cell.className = 'guide-box';
+                cell.style.gridColumn = match[1];
+                cell.style.gridRow = match[2];
+                guides.appendChild(cell);
+            }
+            page.appendChild(guides);
+            body.appendChild(page);
+        });
+        
+        setTimeout(applyAutoScaling, 100);
+        fitToScreen();
+    }
+
+    function fitToScreen() {
+        const pages = document.querySelectorAll('.page');
+        const contentWidth = (1189 * 3.78) + 200;
+        const scale = window.innerWidth / contentWidth;
+        pages.forEach(page => {
+            page.style.transform = `scale(${scale > 1 ? 1 : scale})`;
+            page.style.transformOrigin = 'top center';
+        });
+    }
+
+    window.addEventListener('resize', fitToScreen);
+    window.addEventListener('load', renderPages);
+</script>
+</body>
+</html>
