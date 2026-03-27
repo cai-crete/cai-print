@@ -1,7 +1,9 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { ChevronUp, ChevronDown, ChevronLeft, ChevronRight, Crown } from 'lucide-react';
-import html2canvas from 'html2canvas';
+import { ChevronUp, ChevronDown, ChevronLeft, ChevronRight, Crown, History } from 'lucide-react';
+import html2canvas from 'html2canvas-pro';
 import jsPDF from 'jspdf';
+import JSZip from 'jszip';
+import { saveAs } from 'file-saver';
 import { clsx, type ClassValue } from 'clsx';
 import { twMerge } from 'tailwind-merge';
 import { GoogleGenAI, Type } from "@google/genai";
@@ -116,12 +118,22 @@ const getImageDimensions = (src: string): Promise<{ width: number, height: numbe
 };
 
 
+interface LibraryImage {
+  src: string;
+  type?: string;
+  tag?: string;
+  title?: string;
+  dim?: { x: number; y: number };
+}
+
 export default function App() {
   const [projectType, setProjectType] = useState('auto');
   const [projectKeyword, setProjectKeyword] = useState('');
   const [title, setTitle] = useState('No11. print');
-  const [images, setImages] = useState<string[]>(DEFAULT_IMAGES.map(img => typeof img === 'string' ? img : img.src));
+  const [images, setImages] = useState<LibraryImage[]>(DEFAULT_IMAGES);
+  const [historyImages, setHistoryImages] = useState<LibraryImage[]>([]);
   const [isLibraryOpen, setIsLibraryOpen] = useState(false);
+  const [isHistoryOpen, setIsHistoryOpen] = useState(false);
   const [selectedImages, setSelectedImages] = useState<string[]>([]);
   const [textInput, setTextInput] = useState(DEFAULT_TEXT_INPUT);
   const [purpose, setPurpose] = useState<Purpose>('panel');
@@ -149,17 +161,6 @@ export default function App() {
   const exportContainerRef = useRef<HTMLDivElement>(null);
   const fitScaleRef = useRef(0.6); // ResizeObserver가 계산한 fit-scale 기준값
 
-  // Initial auto flow on mount
-  useEffect(() => {
-    const runAutoInitFlow = async () => {
-      // 1. 이미지 분석 및 현재 purpose 기반 AI 텍스트 자동 생성
-      const result = await handleAutoGenerateText(purpose);
-      // 2. 생성된 텍스트 & 대제목을 직접 전달하여 템플릿 생성 (purpose 하드코딩 제거)
-      await handleGenerate(undefined, true, result?.text ?? undefined, result?.title ?? undefined);
-    };
-    runAutoInitFlow();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
 
 
   // Update scale whenever factors change
@@ -359,11 +360,11 @@ export default function App() {
     };
   }, []);
 
-  const handleImageSelect = (img: string) => {
-    if (selectedImages.includes(img)) {
-      setSelectedImages(selectedImages.filter(i => i !== img));
+  const handleImageSelect = (imgSrc: string) => {
+    if (selectedImages.includes(imgSrc)) {
+      setSelectedImages(selectedImages.filter(i => i !== imgSrc));
     } else {
-      setSelectedImages([...selectedImages, img]);
+      setSelectedImages([...selectedImages, imgSrc]);
     }
   };
 
@@ -376,7 +377,7 @@ export default function App() {
         const reader = new FileReader();
         reader.onload = (e) => {
           if (e.target?.result) {
-            setImages(prev => [e.target!.result as string, ...prev]);
+            setImages(prev => [{ src: e.target!.result as string, type: 'UPLOADED' }, ...prev]);
           }
         };
         reader.readAsDataURL(file);
@@ -398,7 +399,7 @@ export default function App() {
       const authKey = (import.meta as any).env?.VITE_GEMINI_API_KEY || (process as any).env?.GEMINI_API_KEY || '';
       const ai = new GoogleGenAI({ apiKey: authKey });
 
-      const targetImages = selectedImages.length > 0 ? selectedImages : images;
+      const targetImages = selectedImages.length > 0 ? selectedImages : images.map(i => i.src);
       const imagesToAnalyze = targetImages.slice(0, 3);
       
       const contents: any[] = [];
@@ -584,7 +585,7 @@ export default function App() {
 
     setIsGenerating(true);
 
-    let sourceImagesRaw = selectedImages.length > 0 ? selectedImages : images;
+    let sourceImagesRaw = selectedImages.length > 0 ? selectedImages : (images.length > 0 ? [images[0].src] : []);
 
     // AI Heuristics: Analyze and Score Images (Tag Assignment)
     const analyzedImages = await Promise.all(sourceImagesRaw.map(async (img) => {
@@ -627,7 +628,7 @@ export default function App() {
         score = 20; priority = 4;
       }
 
-      return { img, score, priority, dim, tag: internalTag, title };
+      return { src: img, score, priority, dim, tag: internalTag, title };
     }));
 
     // --- Dynamic Hero Selection Logic (v1.1) ---
@@ -843,15 +844,17 @@ ${pageStructures.map((p, i) => `Page ${i + 1} (${p.type}): ${p.textCount} text f
 
         let pool = [...imgPool];
 
-        // ── 1순위: Slot_L 채우기 (BEV > FPV > LAV) ──────────────────────
+        // ── 1순위: Slot_L 채우기 (HeroImage 우선, 그다음 BEV > FPV > LAV) ──
         const heroCandidates = pool.filter(i => HERO_TAGS.includes(i.tag));
         heroCandidates.sort((a, b) => (HERO_PRIORITY[a.tag] ?? 99) - (HERO_PRIORITY[b.tag] ?? 99));
-        const heroSelected = heroCandidates[0] || pool[0] || null;
+
+        const heroInPool = pool.find(i => i.src === heroImage);
+        const heroSelected = heroInPool || heroCandidates[0] || pool[0] || null;
 
         if (heroSelected) {
-          result.push(heroSelected.img); dimsResult.push(heroSelected.dim);
+          result.push(heroSelected.src); dimsResult.push(heroSelected.dim);
           tagsResult.push(heroSelected.tag); titlesResult.push(heroSelected.title);
-          pool = pool.filter(i => i.img !== heroSelected.img);
+          pool = pool.filter(i => i.src !== heroSelected.src);
         }
 
         // 1순위에서 탈락한 잉여 투시도 -> Slot_S 후보로 강등
@@ -862,16 +865,16 @@ ${pageStructures.map((p, i) => `Page ${i + 1} (${p.type}): ${p.textCount} text f
         const medImgs = pool
           .filter(i => MEDIUM_TAGS.includes(i.tag))
           .sort((a, b) => {
-            const numA = parseInt((a.img.match(/\d+/) || ['0'])[0], 10);
-            const numB = parseInt((b.img.match(/\d+/) || ['0'])[0], 10);
+            const numA = parseInt((a.src.match(/\d+/) || ['0'])[0], 10);
+            const numB = parseInt((b.src.match(/\d+/) || ['0'])[0], 10);
             return numA - numB;
           })
           .slice(0, SLOT_M_COUNT);
 
         medImgs.forEach(it => {
-          result.push(it.img); dimsResult.push(it.dim);
+          result.push(it.src); dimsResult.push(it.dim);
           tagsResult.push(it.tag); titlesResult.push(it.title);
-          pool = pool.filter(i => i.img !== it.img);
+          pool = pool.filter(i => i.src !== it.src);
         });
 
         // ── 3순위: Slot_S 채우기 (DIA + 잉여 투시도) ────────────────────
@@ -881,7 +884,7 @@ ${pageStructures.map((p, i) => `Page ${i + 1} (${p.type}): ${p.textCount} text f
         while (result.length < TOTAL) {
           if (slotSPool.length > 0) {
             const it = slotSPool.shift()!;
-            result.push(it.img); dimsResult.push(it.dim);
+            result.push(it.src); dimsResult.push(it.dim);
             tagsResult.push(it.tag); titlesResult.push(it.title);
           } else {
             // Rule B (Underflow): 빈 슬롯 -> 흰 배경으로 처리
@@ -891,7 +894,7 @@ ${pageStructures.map((p, i) => `Page ${i + 1} (${p.type}): ${p.textCount} text f
         }
 
         // 전역 imgPool 업데이트
-        imgPool = pool.filter(i => !slotSPool.some(s => s.img === i.img));
+        imgPool = pool.filter(i => !slotSPool.some(s => s.src === i.src));
         if (imgPool.length === 0) imgPool = [...analyzedImages];
 
         return { images: result, dims: dimsResult, tags: tagsResult, titles: titlesResult };
@@ -902,7 +905,7 @@ ${pageStructures.map((p, i) => `Page ${i + 1} (${p.type}): ${p.textCount} text f
         const titlesResult = [];
         for (let i = 0; i < count; i++) {
           const it = imgPool.shift() || analyzedImages[i % analyzedImages.length];
-          result.push(it?.img || '');
+          result.push(it?.src || '');
           dimsResult.push(it?.dim || { width: 1, height: 1 });
           tagsResult.push(it?.tag || '');
           titlesResult.push(it?.title || '');
@@ -970,6 +973,43 @@ ${pageStructures.map((p, i) => `Page ${i + 1} (${p.type}): ${p.textCount} text f
     }
 
     setGeneratedPages(newPages);
+
+    // --- 자동 라이브러리 업로드 로직 (Background Capture) ---
+    setTimeout(async () => {
+      if (!exportContainerRef.current) return;
+      await document.fonts.ready;
+      const elements = Array.from(exportContainerRef.current.children);
+      const snapshots: any[] = [];
+      
+      for (let i = 0; i < elements.length; i++) {
+         const el = elements[i] as HTMLElement;
+         try {
+           // 저해상도로 템플릿 포착
+           const canvas = await html2canvas(el, { 
+             scale: 0.25, 
+             useCORS: true,
+             logging: false,
+             backgroundColor: '#ffffff',
+             scrollY: -window.scrollY,
+             scrollX: 0
+           });
+           const dataUrl = canvas.toDataURL('image/jpeg', 0.8);
+           snapshots.push({
+             src: dataUrl,
+             type: 'GENERATED_TMPL',
+             dim: { x: canvas.width, y: canvas.height },
+             title: `Generated_Page_${i+1}`,
+             tag: '[TAG: DIA]' 
+           });
+         } catch(e) {
+           console.error("Thumbnail capture failed:", e);
+         }
+      }
+      if (snapshots.length > 0) {
+        setHistoryImages(prev => [...snapshots, ...prev]);
+      }
+    }, 2000); 
+
     setCurrentPageIndex(0);
     setIsGenerating(false);
   };
@@ -1044,8 +1084,22 @@ ${pageStructures.map((p, i) => `Page ${i + 1} (${p.type}): ${p.textCount} text f
       await waitForImages(exportContainerRef.current);
       const pageElements = exportContainerRef.current.children;
 
+      if (pageElements.length === 0) {
+          alert('출력할 페이지가 없습니다.');
+          setIsDownloading(false);
+          return;
+      }
+
+      // Check if elements have dimensions
+      const firstEl = pageElements[0] as HTMLElement;
+      if (firstEl.offsetWidth === 0 || firstEl.offsetHeight === 0) {
+          throw new Error("Export container dimensions are 0. Please ensure elements are rendered.");
+      }
+
+      // 폰트 완전 로드 보장 (상단 텍스트 잘림 현상 방지)
+      await document.fonts.ready;
+
       if (exportFormat === 'pdf') {
-        const firstEl = pageElements[0] as HTMLElement;
         const pdf = new jsPDF({
           orientation: firstEl.offsetWidth > firstEl.offsetHeight ? 'landscape' : 'portrait',
           unit: 'pt',
@@ -1056,8 +1110,17 @@ ${pageStructures.map((p, i) => `Page ${i + 1} (${p.type}): ${p.textCount} text f
           const el = pageElements[i] as HTMLElement;
           // IMPORTANT: Use scale: 1 for A0 Panel to avoid huge canvas, or keep scale: 2 for A3
           const captureScale = (purpose === 'panel') ? 1 : 2;
-          const canvas = await html2canvas(el, { scale: captureScale, useCORS: true, logging: false });
+          const canvas = await html2canvas(el, { 
+            scale: captureScale, 
+            useCORS: true, 
+            logging: false,
+            windowWidth: document.documentElement.offsetWidth,
+            windowHeight: document.documentElement.offsetHeight,
+            scrollY: -window.scrollY,
+            scrollX: 0
+          });
           const imgData = canvas.toDataURL('image/jpeg', 0.95);
+
 
           if (i > 0) {
             pdf.addPage([el.offsetWidth, el.offsetHeight], el.offsetWidth > el.offsetHeight ? 'landscape' : 'portrait');
@@ -1069,28 +1132,120 @@ ${pageStructures.map((p, i) => `Page ${i + 1} (${p.type}): ${p.textCount} text f
       } else if (exportFormat === 'video') {
         alert('비디오 버전 출력 서비스 준비 중입니다. 현재는 이미지 시퀀스로만 내보낼 수 있습니다.');
       } else {
+        // File System Access API를 활용한 로컬 폴더 직접 저장 (압축 없음)
+        if ('showDirectoryPicker' in window) {
+          try {
+            const dirHandle = await (window as any).showDirectoryPicker({ mode: 'readwrite' });
+            for (let i = 0; i < pageElements.length; i++) {
+              const el = pageElements[i] as HTMLElement;
+              const captureScale = (purpose === 'panel') ? 1 : 2;
+              const canvas = await html2canvas(el, { 
+                scale: captureScale, 
+                useCORS: true, 
+                logging: false,
+                windowWidth: document.documentElement.offsetWidth,
+                windowHeight: document.documentElement.offsetHeight,
+                scrollY: -window.scrollY,
+                scrollX: 0
+              });
+              
+              const imgBlob = await new Promise<Blob | null>(resolve => 
+                canvas.toBlob(blob => resolve(blob), `image/${exportFormat}`, exportFormat === 'jpeg' ? 0.95 : undefined)
+              );
+
+              if (imgBlob) {
+                const fileName = `${title || 'document'}_page_${i + 1}.${exportFormat}`;
+                const fileHandle = await dirHandle.getFileHandle(fileName, { create: true });
+                const writable = await fileHandle.createWritable();
+                await writable.write(imgBlob);
+                await writable.close();
+              }
+            }
+            alert('지정하신 폴더에 개별 이미지 파일이 모두 성공적으로 저장되었습니다.');
+            return;
+          } catch (e: any) {
+            // 사용자가 폴더 선택창을 취소한 경우 바로 종료
+            if (e.name === 'AbortError') {
+              setIsDownloading(false);
+              return;
+            }
+            // 그 외 에러는 ZIP 폴백으로 넘김
+            console.error('File System Access API failed, falling back to ZIP:', e);
+          }
+        }
+
+        // --- 구형 브라우저 또는 타 에러 시 ZIP 폴백 로직 ---
+        // Handle Vite's CommonJS default export quirks
+        const ZipConstructor = (JSZip as any).default || JSZip;
+        const zip = new ZipConstructor();
+        
+        // Create a root folder within the zip named after the title
+        const rootFolderName = `${title || 'document'}_images`;
+        const folder = zip.folder(rootFolderName);
+
         for (let i = 0; i < pageElements.length; i++) {
           const el = pageElements[i] as HTMLElement;
           const captureScale = (purpose === 'panel') ? 1 : 2;
-          const canvas = await html2canvas(el, { scale: captureScale, useCORS: true });
-          const imgData = canvas.toDataURL(`image/${exportFormat}`, exportFormat === 'jpeg' ? 0.95 : undefined);
+          const canvas = await html2canvas(el, { 
+            scale: captureScale, 
+            useCORS: true,
+            windowWidth: document.documentElement.offsetWidth,
+            windowHeight: document.documentElement.offsetHeight,
+            scrollY: -window.scrollY,
+            scrollX: 0
+          });
+          const imgBlob = await new Promise<Blob | null>(resolve => 
+            canvas.toBlob(blob => resolve(blob), `image/${exportFormat}`, exportFormat === 'jpeg' ? 0.95 : undefined)
+          );
 
+          if (imgBlob && folder) {
+            folder.file(`page_${i + 1}.${exportFormat}`, imgBlob);
+          }
+        }
+
+        const zipBlob = await zip.generateAsync({ type: 'blob' });
+        
+        // --- 로컬 서버 자동 저장 시도 (C:\Users\Crete_\Pictures\cai-print) ---
+        try {
+          const imageDatas = await Promise.all(
+            Array.from(pageElements).map(async (el) => {
+              const c = await html2canvas(el as HTMLElement, { 
+                scale: (purpose === 'panel') ? 1 : 2, 
+                useCORS: true, 
+                scrollY: -window.scrollY, 
+                scrollX: 0 
+              });
+              return c.toDataURL(`image/${exportFormat}`, 0.95);
+            })
+          );
+
+          await fetch('/api/save-images', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ title, images: imageDatas, format: exportFormat })
+          });
+          console.log("Automatically saved to local folder via server.");
+        } catch (serverErr) {
+          console.error("Server-side save failed:", serverErr);
+        }
+
+        // Fallback to browser download (ZIP)
+        try {
+          saveAs(zipBlob, `${rootFolderName}.zip`);
+        } catch (e) {
+          const url = URL.createObjectURL(zipBlob);
           const link = document.createElement('a');
-          link.href = imgData;
-          link.download = `${title || 'document'}_page_${i + 1}.${exportFormat}`;
+          link.href = url;
+          link.download = `${rootFolderName}.zip`;
           document.body.appendChild(link);
           link.click();
           document.body.removeChild(link);
-
-          // 브라우저 동시다발적 다운로드 차단 방지 (순차 지연)
-          if (i < pageElements.length - 1) {
-            await new Promise(resolve => setTimeout(resolve, 500));
-          }
+          URL.revokeObjectURL(url);
         }
       }
-    } catch (error) {
+    } catch (error: any) {
       console.error('Download failed:', error);
-      alert('다운로드 중 오류가 발생했습니다.');
+      alert(`다운로드 중 오류가 발생했습니다.\n상세: ${error.message || error}`);
     } finally {
       setIsDownloading(false);
     }
@@ -1129,11 +1284,32 @@ ${pageStructures.map((p, i) => `Page ${i + 1} (${p.type}): ${p.textCount} text f
 
           {/* Library Toggle Button */}
           <button
-            onClick={() => setIsLibraryOpen(!isLibraryOpen)}
-            className="w-12 h-12 bg-black rounded-full shadow-xl flex items-center justify-center text-white hover:scale-105 hover:shadow-2xl transition-all group relative"
+            onClick={() => {
+              setIsLibraryOpen(!isLibraryOpen);
+              if (!isLibraryOpen) setIsHistoryOpen(false);
+            }}
+            className={cn(
+               "w-12 h-12 rounded-full shadow-xl flex items-center justify-center transition-all group relative",
+               isLibraryOpen ? "bg-black text-white" : "bg-white text-gray-500 border border-gray-200"
+            )}
           >
             <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><rect width="18" height="18" x="3" y="3" rx="2" ry="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>
             <span className="absolute left-full ml-2 px-2 py-1 bg-gray-800 text-white text-[10px] rounded opacity-0 group-hover:opacity-100 pointer-events-none whitespace-nowrap">{isLibraryOpen ? 'Close Library' : 'Open Library'}</span>
+          </button>
+
+          {/* History Toggle Button */}
+          <button
+            onClick={() => {
+              setIsHistoryOpen(!isHistoryOpen);
+              if (!isHistoryOpen) setIsLibraryOpen(false);
+            }}
+            className={cn(
+              "w-12 h-12 rounded-full shadow-xl flex items-center justify-center transition-all group relative",
+              isHistoryOpen ? "bg-black text-white" : "bg-white text-gray-500 border border-gray-200"
+            )}
+          >
+            <History size={18} strokeWidth={2.5} />
+            <span className="absolute left-full ml-2 px-2 py-1 bg-gray-800 text-white text-[10px] rounded opacity-0 group-hover:opacity-100 pointer-events-none whitespace-nowrap">{isHistoryOpen ? 'Close History' : 'Open History'}</span>
           </button>
         </div>
 
@@ -1152,9 +1328,9 @@ ${pageStructures.map((p, i) => `Page ${i + 1} (${p.type}): ${p.textCount} text f
           
           <div className="flex-1 overflow-y-auto [&::-webkit-scrollbar]:hidden w-full">
             <div className="grid grid-cols-3 gap-2 pb-2">
-              {images.map((img, idx) => {
-                const defaultImg = DEFAULT_IMAGES.find(d => d.src === img);
-                let typeLabel = defaultImg?.type;
+              {images.map((imgObj, idx) => {
+                const img = imgObj.src;
+                let typeLabel = imgObj.type;
                 if (!typeLabel) {
                    const match = img.match(/([^/]+) -\d+\.[a-zA-Z]+$/);
                    if (match) typeLabel = match[1];
@@ -1194,6 +1370,67 @@ ${pageStructures.map((p, i) => `Page ${i + 1} (${p.type}): ${p.textCount} text f
                 </div>
               )})}
             </div>
+          </div>
+        </div>
+
+        {/* History Pop-up Panel */}
+        <div className={cn(
+          "absolute left-[90px] top-1/2 -translate-y-1/2 w-[340px] max-h-[80vh] bg-[#fdfdfd] border border-gray-200 rounded-2xl shadow-[0_15px_40px_rgba(0,0,0,0.12)] flex flex-col pt-6 pb-4 px-5 transition-all duration-400 ease-[cubic-bezier(0.16,1,0.3,1)] z-30 origin-left",
+          isHistoryOpen ? "opacity-100 scale-100 translate-x-0" : "opacity-0 scale-95 -translate-x-4 pointer-events-none"
+        )}>
+          <div className="flex justify-between items-center mb-6 px-1">
+            <h2 className="text-[13px] font-black tracking-widest text-black">HISTORY</h2>
+            <div className="text-[9px] text-gray-400 font-bold uppercase tracking-widest">Auto Captured</div>
+          </div>
+          
+          <div className="flex-1 overflow-y-auto [&::-webkit-scrollbar]:hidden w-full">
+            {historyImages.length === 0 ? (
+               <div className="flex flex-col items-center justify-center h-40 text-gray-300 gap-2">
+                 <History size={32} strokeWidth={1} />
+                 <span className="text-[10px] font-bold">NO HISTORY YET</span>
+               </div>
+            ) : (
+              <div className="grid grid-cols-3 gap-2 pb-2">
+                {historyImages.map((imgObj, idx) => {
+                  const img = imgObj.src;
+                  let typeLabel = imgObj.type === 'GENERATED_TMPL' ? 'Snapshot' : imgObj.type;
+                  
+                  return (
+                  <div key={idx} className="relative group/item aspect-square w-full">
+                    <button
+                      onClick={() => handleImageSelect(img)}
+                      draggable
+                      onDragStart={(e) => handleLibraryImageDragStart(e, img)}
+                      onDragEnd={handleLibraryImageDragEnd}
+                      className={cn(
+                        "w-full h-full border overflow-hidden transition-all rounded-xl block cursor-grab active:cursor-grabbing relative bg-gray-100",
+                        selectedImages.includes(img) ? "border-black shadow-inner ring-2 ring-black/10 ring-inset" : "border-transparent hover:border-gray-300",
+                        draggingImgSrc === img && "ring-4 ring-blue-500 opacity-50 scale-95"
+                      )}
+                    >
+                      <img src={img} alt={`history-${idx}`} className="w-full h-full object-cover pointer-events-none mix-blend-multiply" />
+                      {typeLabel && (
+                        <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/60 via-black/30 to-transparent pt-6 pb-1.5 px-1 text-white text-[9px] leading-none text-center font-bold tracking-tighter truncate drop-shadow-md">
+                          {typeLabel.toUpperCase()}
+                        </div>
+                      )}
+                      {draggingImgSrc === img && (
+                        <div className="absolute inset-0 bg-blue-500/20 flex items-center justify-center backdrop-blur-[1px]">
+                           <div className="w-4 h-4 rounded-full bg-white animate-ping" />
+                        </div>
+                      )}
+                    </button>
+                    <button
+                      onClick={() => setHeroImage(heroImage === img ? null : img)}
+                      className={cn("absolute -top-1.5 -right-1.5 p-1 rounded-full shadow-md opacity-0 group-hover/item:opacity-100 transition-all z-10", heroImage === img ? "opacity-100 bg-yellow-400 text-white hover:bg-yellow-500" : "bg-white text-gray-400 hover:text-black hover:bg-gray-100")}
+                      title="Make Hero Image (1st Priority)"
+                    >
+                      <Crown size={12} strokeWidth={2.5} />
+                    </button>
+                  </div>
+                )})}
+              </div>
+            )}
           </div>
         </div>
 
@@ -1339,6 +1576,23 @@ ${pageStructures.map((p, i) => `Page ${i + 1} (${p.type}): ${p.textCount} text f
               <span className="font-medium text-sm">{title}</span>
             </div>
 
+            {/* AI 텍스트 자동생성 (Moved to top as requested) */}
+            <section className={cn("transition-all duration-300", ['report', 'drawing', 'panel', 'image'].includes(purpose) ? "opacity-100 block" : "opacity-0 hidden")}>
+              <h3 className="text-sm font-medium mb-3 flex items-center justify-between">
+                <span>AI 텍스트 자동생성</span>
+                {isGeneratingText && <div className="w-3 h-3 border-2 border-gray-300 border-t-black rounded-full animate-spin" />}
+              </h3>
+              <p className="text-[10px] text-gray-400 mb-4 leading-tight">문서 생성 시 이미지와 목적에 맞춰 텍스트가 자동으로 생성됩니다.</p>
+
+              <span className="text-[10px] font-bold text-gray-400 uppercase tracking-wide block mb-1">내용 검토 및 수정 (Review & Edit)</span>
+              <textarea
+                value={textInput}
+                onChange={(e) => setTextInput(e.target.value)}
+                placeholder="AI가 작성한 내용이 이곳에 표시되며, 이를 직접 수정하여 최종 반영할 수 있습니다."
+                className="w-full h-32 border border-gray-300 p-3 text-[11px] leading-relaxed resize-none focus:outline-none focus:border-black mb-2"
+              />
+            </section>
+
             {/* A. Purpose / Size */}
             <section>
               <h3 className="text-sm font-medium mb-3">A. Purpose / Size</h3>
@@ -1373,12 +1627,6 @@ ${pageStructures.map((p, i) => `Page ${i + 1} (${p.type}): ${p.textCount} text f
                 >
                   Video
                 </button>
-                <button
-                  onClick={() => setPurpose('image')}
-                  className={cn("w-full border py-2 text-sm font-medium transition-colors", purpose === 'image' ? "bg-gray-800 text-white border-gray-800" : "border-gray-300 hover:bg-gray-50")}
-                >
-                  Image
-                </button>
               </div>
             </section>
 
@@ -1403,34 +1651,10 @@ ${pageStructures.map((p, i) => `Page ${i + 1} (${p.type}): ${p.textCount} text f
               </div>
             </section>
 
-            {/* C. AI 텍스트 자동 구축 & 내용 검토 */}
-            <section className={cn("transition-all duration-300", ['report', 'drawing', 'panel', 'image'].includes(purpose) ? "opacity-100 block mt-2" : "opacity-0 hidden")}>
-              <h3 className="text-sm font-medium mb-3 flex items-center justify-between">
-                <span>C. AI 텍스트 자동생성</span>
-                {isGeneratingText && <div className="w-3 h-3 border-2 border-gray-300 border-t-black rounded-full animate-spin" />}
-              </h3>
-              <button
-                onClick={() => handleAutoGenerateText(purpose, numPages)}
-                disabled={isGeneratingText || isGenerating}
-                className="w-full border border-gray-800 text-gray-800 py-3 text-sm font-bold hover:bg-gray-50 transition-colors disabled:opacity-50 flex items-center justify-center gap-2"
-              >
-                {isGeneratingText ? '생성 중...' : <><span className="text-gray-400 pr-1">✦</span> AI 텍스트 자동 구축</>}
-              </button>
-              <p className="text-[10px] text-gray-400 mt-2 mb-4 leading-tight">선택된 목적과 조건에 맞춰 페이지별 초안 텍스트를 AI가 자동 구축합니다.</p>
 
-              {/* 내용 검토 및 업로드 (Review & Upload) */}
-              <span className="text-[10px] font-bold text-gray-400 uppercase tracking-wide block mb-1">내용 검토 및 수정 (Review & Edit)</span>
-              <textarea
-                value={textInput}
-                onChange={(e) => setTextInput(e.target.value)}
-                placeholder="AI가 작성한 내용이 이곳에 표시되며, 이를 직접 수정하여 최종 반영할 수 있습니다."
-                className="w-full h-32 border border-gray-300 p-3 text-[11px] leading-relaxed resize-none focus:outline-none focus:border-black mb-2"
-              />
-            </section>
-
-            {/* D. Generate */}
+            {/* C. Generate */}
             <section className="mt-2 text-gray-500">
-              <h3 className="text-sm font-medium mb-3">D. Generate</h3>
+              <h3 className="text-sm font-medium mb-3">C. Generate</h3>
 
               <button
                 onClick={() => handleGenerate()}
@@ -1441,9 +1665,9 @@ ${pageStructures.map((p, i) => `Page ${i + 1} (${p.type}): ${p.textCount} text f
               </button>
             </section>
 
-            {/* E. Export */}
+            {/* D. Export */}
             <section className="mt-auto pt-8 border-t border-gray-200">
-              <h3 className="text-sm font-medium mb-3">E. Export</h3>
+              <h3 className="text-sm font-medium mb-3">D. Export</h3>
               <div className="flex gap-2 mb-3">
                 <button onClick={() => setExportFormat('pdf')} className={cn("flex-1 border py-1 text-xs font-medium transition-colors", exportFormat === 'pdf' ? "bg-gray-200 border-gray-400" : "border-gray-300 hover:bg-gray-50")}>PDF</button>
                 <button onClick={() => setExportFormat('png')} className={cn("flex-1 border py-1 text-xs font-medium transition-colors", exportFormat === 'png' ? "bg-gray-200 border-gray-400" : "border-gray-300 hover:bg-gray-50")}>PNG</button>
@@ -1466,17 +1690,36 @@ ${pageStructures.map((p, i) => `Page ${i + 1} (${p.type}): ${p.textCount} text f
       {/* Hidden container for PDF export rendering */}
       <div className="fixed top-0 left-[-9999px] opacity-0 pointer-events-none">
         <div ref={exportContainerRef} className="flex flex-col gap-4">
-          {generatedPages.map((page, idx) => (
-            <div key={page.id} className="bg-white">
-              <PageRenderer
-                page={page}
-                purpose={purpose}
-                orientation={orientation}
-                pageIndex={idx}
-                allPages={generatedPages}
-              />
-            </div>
-          ))}
+          {generatedPages.map((page, idx) => {
+            const isPanel = page.type === 'panel';
+            const isPortrait = isPanel && orientation === 'portrait';
+            let mmW: number, mmH: number;
+            if (isPanel) {
+              mmW = isPortrait ? 841 : 1189;
+              mmH = isPortrait ? 1189 : 841;
+            } else if (page.type === 'video') {
+              mmW = 1920; mmH = 1080;
+            } else if (page.type === 'image') {
+              mmW = 1080; mmH = 1080;
+            } else {
+              mmW = 420; mmH = 297;
+            }
+            const PX_PER_MM = 96 / 25.4;
+            const pxW = mmW * PX_PER_MM;
+            const pxH = mmH * PX_PER_MM;
+
+            return (
+              <div key={page.id} className="bg-white" style={{ width: pxW, height: pxH }}>
+                <PageRenderer
+                  page={page}
+                  purpose={purpose}
+                  orientation={orientation}
+                  pageIndex={idx}
+                  allPages={generatedPages}
+                />
+              </div>
+            );
+          })}
         </div>
       </div>
 

@@ -112,7 +112,7 @@ export function TemplatePanel({ page, orientation, onTextMouseUp }: { page: Page
                     onMouseUp={() => onTextMouseUp?.(page.id, -1)}
                     data-text-index="-1"
                     className="font-black text-black leading-[1.0] tracking-[-4px] whitespace-nowrap"
-                    style={{ fontSize: '140pt', alignSelf: 'start', ...getTextStyle(page.content.textStyles, -1) }}
+                    style={{ fontSize: '140pt', alignSelf: 'start', paddingTop: '5mm', ...getTextStyle(page.content.textStyles, -1) }}
                 >
                     {page.content.title}
                 </div>
