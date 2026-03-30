@@ -19,6 +19,15 @@ import { TemplateDrawing } from './components/templates/TemplateDrawing';
 import { TemplateVideo } from './components/templates/TemplateVideo';
 import { TemplateImage } from './components/templates/TemplateImage';
 import { create_transition_video } from './utils/replicateVideo';
+import PROMPT_ARCHITECT from './writer/PROMPT_건축작가.txt?raw';
+import REF_BOOK from './writer/REF.BOOK.txt?raw';
+import IMG_ANALYSIS_V1 from './writer/건축이미지분석기술서v1.txt?raw';
+import LANGUAGE_TECH_V1 from './writer/언어분석 10가지 기술 v1.md?raw';
+import ERROR_CORRECTION from './writer/고종석_오류교정.txt?raw';
+import WRITING_START from './writer/1.글쓰기_시작.txt?raw';
+import WRITING_REFINED_DATA from './writer/글쓰기_정제화data.txt?raw';
+import SPEECH_VERIFICATION from './writer/발화검증_프로토콜.txt?raw';
+
 
 function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs));
@@ -46,7 +55,7 @@ function MediaViewer({ images, mode }: { images: string[], mode: 'video' | 'imag
         <div className="grid grid-cols-2 md:grid-cols-3 gap-6 w-full h-fit content-start">
           {images.map((img, idx) => (
             <div key={img + idx} className="bg-white/5 border border-white/10 rounded-xl overflow-hidden shadow-lg aspect-video p-1 relative flex items-center justify-center bg-zinc-900">
-               <img src={img} alt={`img-${idx}`} className="w-full h-full object-contain pointer-events-none rounded-lg" />
+              <img src={img} alt={`img-${idx}`} className="w-full h-full object-contain pointer-events-none rounded-lg" />
             </div>
           ))}
         </div>
@@ -90,9 +99,9 @@ function MediaTimelineEditor({ images, onReorder }: { images: string[], onReorde
   return (
     <div className="flex gap-4 items-center">
       {images.map((img, idx) => (
-        <div 
-          key={img + idx} 
-          draggable 
+        <div
+          key={img + idx}
+          draggable
           onDragStart={(e) => handleDragStart(e, idx)}
           onDragOver={(e) => e.preventDefault()}
           onDrop={(e) => handleDrop(e, idx)}
@@ -156,6 +165,16 @@ export default function App() {
     renderedFontSize?: number;
     renderedFontFamily?: string;
   } | null>(null);
+  const [isTablet, setIsTablet] = useState(false);
+
+  useEffect(() => {
+    const handleResize = () => {
+      setIsTablet(window.innerWidth < 1200);
+    };
+    handleResize();
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
 
   const canvasAreaRef = useRef<HTMLDivElement>(null);
   const exportContainerRef = useRef<HTMLDivElement>(null);
@@ -192,13 +211,13 @@ export default function App() {
       const pxW = mmW * PX_PER_MM;
       const pxH = mmH * PX_PER_MM;
 
-      const padding = 80; // 패딩을 80으로 늘려 여유 확보
+      const padding = isTablet ? 40 : 80; // 태블릿에서 여백을 줄여 템플릿 공간 확보
       const availableWidth = container.clientWidth - padding;
       const availableHeight = container.clientHeight - padding;
 
       const scaleX = availableWidth / pxW;
       const scaleY = availableHeight / pxH;
-      
+
       // 화면에 꽉 차는 배율(fit)에 0.9를 곱하여(90%) 상하좌우 여유 확보
       const newScale = Math.min(scaleX, scaleY) * 0.9;
 
@@ -254,7 +273,7 @@ export default function App() {
       const target = e.target as HTMLElement;
       // Don't close if clicking inside the toolbar, the typography panel, or a text element
       if (
-        target.closest('.ai-floating-toolbar') || 
+        target.closest('.ai-floating-toolbar') ||
         target.closest('.ai-typography-panel') ||
         target.closest('[data-text-index]') // Represents selectable text elements
       ) {
@@ -288,7 +307,7 @@ export default function App() {
     const handleImageDrop = (e: any) => {
       const { source, target } = e.detail;
       setDraggingImgSrc(null);
-      
+
       setGeneratedPages(prevPages => {
         const newPages = [...prevPages];
         const targetPageIndex = newPages.findIndex(p => p.id === target.pageId);
@@ -314,7 +333,7 @@ export default function App() {
             const temp = targetImages[target.imageIndex];
             targetImages[target.imageIndex] = targetImages[source.imageIndex];
             targetImages[source.imageIndex] = temp;
-            
+
             targetContent.images = targetImages;
             targetPage.content = targetContent;
             newPages[targetPageIndex] = targetPage;
@@ -401,7 +420,7 @@ export default function App() {
 
       const targetImages = selectedImages.length > 0 ? selectedImages : images.map(i => i.src);
       const imagesToAnalyze = targetImages.slice(0, 3);
-      
+
       const contents: any[] = [];
       // 현재 적용할 목적(용도) 결정 — state가 업데이트되기 전일 수 있어 overridePurpose 우선 사용
       const currentPurposeForPrompt = overridePurpose || purpose;
@@ -413,39 +432,52 @@ export default function App() {
         video: '영상 스크립트 (Video) — 내레이션 스타일',
       };
       const purposeDescription = purposeLabel[currentPurposeForPrompt] || currentPurposeForPrompt;
-      const promptText = `당신은 'AI CANVAS' 시스템 내의 지능형 콘텐츠 생성 모듈입니다.
-업로드된 건축 이미지를 심층 분석하고, 아래 문서 목적에 맞게 프로젝트의 대제목, 소제목, 프롤로그, 상세 본문 단락을 자동으로 생성하세요.
 
-**문서 목적(용도): ${purposeDescription}**
-**총 페이지 수: ${currentNumPages}페이지** (이 분량에 맞게 내용의 깊이와 단락 수를 조절하세요)
+      // [writer 프로토콜] 최우선 지시사항 및 지식 베이스 통합
+      const systemPrompt = `
+${PROMPT_ARCHITECT}
 
-**조건 및 가이드라인:**
-1. 시각적 데이터 분석 및 핵심 가치 도출: 건축물의 형태, 외장재, 공간 구성, 조경 요소, 주변 도시 맥락을 분석.
-2. 대제목 (Main Title): 프로젝트의 정체성을 직관적으로 보여주는 핵심 제목. (문서 목적을 반영)
-3. 소제목 (Sub Title): 대제목을 보조하는 감성적/기능적 슬로건.
-4. 프롤로그 (Prologue): [분량 조건: 4줄 이상 ~ 7줄 이하] 프로젝트의 전반적인 배경, 디자인 철학, 핵심 콘셉트, 그리고 대상지가 주변 환경(도시)과 맺는 관계를 아우르는 도입부. 본문으로 넘어가기 전 자연스럽고 흡인력 있는 문장들로 구성하세요.
-5. 본문 단락 (Body Paragraphs): [형식: (**[문단주제]**\n> [문단내용])] [분량 조건: 최소 2개 문단 이상 생성 / 각 '문단내용'은 3줄 이상 ~ 6줄 이하] 이미지 분석을 통해 도출된 구체적인 특징들을 각각 별개의 주제로 삼아 상세히 설명.
-6. 문서 목적이 **Panel**이면 감성적이고 공간감 있는 문체를, **Report**이면 논리적이고 서술적인 문체를 사용하세요.
+# KNOWLEDGE DATABASE (지식 데이터베이스)
+## REF_BOOK (건축가형 글쓰기 프로토콜)
+${REF_BOOK}
 
-**출력 형식은 반드시 아래의 마크다운 형식을 엄격히 따르세요:**
+## IMG_ANALYSIS (건축 이미지 온톨로지 분석 기술서)
+${IMG_ANALYSIS_V1}
 
-### 1. 패널 메인 타이틀 & 컨셉 (Main Titles)
-* **대제목:** [대제목 생성]
-* **소제목:** [소제목 생성]
+## LANGUAGE_TECH (언어분석 10가지 기술)
+${LANGUAGE_TECH_V1}
 
----
+## ERROR_CORRECTION (오류 교정 원칙)
+${ERROR_CORRECTION}
 
-### 2. 프롤로그 (Prologue)
-[프롤로그 작성]
+**문서 목적: ${purposeDescription}**
 
----
+# PHYSICAL CONSTRAINTS (물리적 제약 조건 - 중요)
+생성된 각 텍스트는 해당 영역의 물리적 텍스트 박스(Text Box) 크기를 절대 초과해서는 안 됩니다.
+1. **보고서 본문 (Report Body)**: 107mm x 196mm 영역 내 14pt 폰트 적용. 최대 10~12줄(약 400자 이내)로 요약/축약하십시오.
+2. **패널 (Panel)**: 정해진 그리드 칸을 넘지 않도록 문장을 단조(Simple)화하고 공간 묘사 위주로 핵심만 정리하십시오.
+3. **대제목 (Main Title)**: 20자 이내로 압축적으로 표현하십시오.
+"텍스트가 박스를 벗어나지 않도록 불필요한 수식어를 과감히 제하고, 압축적으로 요약하여 글쓰기 쿼리티를 높이십시오."
+**페이지 분량: ${currentNumPages}페이지**
 
-### 3. 테마별 서브 타이틀 및 본문 텍스트 (Body Text)
-**A. [문단주제 1]**
-> [문단내용 1]
+### 실행 단계 (Protocol Sequence):
+1. **이미지 온톨로지 분석**: {IMG_ANALYSIS}의 13단계 체계 중 핵심 요소(형태, 공간, 재료, 맥락)를 분석하여 공간적 인사이트를 도출합니다.
+2. **사고 단위 분절 (AoT)**: {REF_BOOK}의 'Tectonics of Logic' 원칙에 따라 대제목(Q0), 소제목, 프롤로그, 본문의 논리적 위계를 설계합니다.
+3. **감각적 인터페이스 적용**: {REF_BOOK}의 'Materiality' 원칭에 따라 형용사를 구체적인 물성 어휘로 변환합니다.
+4. **마감 및 자가 교정**: {ERROR_CORRECTION}을 통해 상투적 표현을 제거하고, {SPEECH_VERIFICATION}의 리듬감을 점검합니다.
 
-**B. [문단주제 2]**
-> [문단내용 2]
+### 출력 형식 (Markdown):
+1. 대제목 (Main Title): 프로젝트의 정체성.
+2. 소제목 (Sub Title): 감성적/기능적 슬로건.
+3. 프롤로그 (Prologue): [4~7줄] 건축적 산책로(Promenade)를 여는 도입부.
+4. 본문 단락 (Body Paragraphs): [최소 2개 문단] (**[문단주제]**\n> [문단내용]) 형식. 각 문단은 3~6줄.
+`;
+
+      const promptText = `
+${systemPrompt}
+
+**분석 대상 이미지들을 바탕으로 위 프로토콜을 엄격히 준수하여 텍스트를 생성하세요.**
+학술적 엄밀성과 건축적 감수성이 통합된 결과를 기대합니다.
 `;
 
       contents.push(promptText);
@@ -485,14 +517,14 @@ export default function App() {
 
         // AI 응답에서 대제목 파싱 → setTitle()은 호출하지 않음 (title state = 프로그램 이름)
         const titleMatch = resultText.match(/\*\*대제목[:\s：]+\*\*\s*(.+)/i)
-                        || resultText.match(/\*\s*\*\*대제목[:\s：]+\*\*\s*(.+)/i);
+          || resultText.match(/\*\s*\*\*대제목[:\s：]+\*\*\s*(.+)/i);
         const parsedTitle = titleMatch ? titleMatch[1].trim().replace(/[*_`]/g, '').trim() : null;
 
         if (autoGenerate) {
-        setTimeout(() => {
-          handleGenerate(currentPurposeForPrompt, true, resultText, parsedTitle);
-        }, 100);
-      }
+          setTimeout(() => {
+            handleGenerate(currentPurposeForPrompt, true, resultText, parsedTitle);
+          }, 100);
+        }
 
         return { text: resultText, title: parsedTitle };
       }
@@ -514,8 +546,8 @@ export default function App() {
     // [Phase 8] Extract title from current text input if available
     const fallbackMatch = currentTextInput.match(/\*\*대제목[:\s：]+\*\*\s*(.+)/i) || currentTextInput.match(/\*\s*\*\*대제목[:\s：]+\*\*\s*(.+)/i);
     if (fallbackMatch && (currentTitle === 'No11. print' || !overrideTitle)) {
-        currentTitle = fallbackMatch[1].trim().replace(/[*_`]/g, '').trim();
-        setTitle(currentTitle); // Update state asynchronously to keep UI in sync
+      currentTitle = fallbackMatch[1].trim().replace(/[*_`]/g, '').trim();
+      // setTitle(currentTitle); // 이제 전체 타이틀은 'No11. print'로 고정되므로 state 업데이트를 방지합니다.
     }
 
     // [Phase 5] 자동 AI 텍스트 생성 연동: 텍스트가 필요한 모드인데 기본값이면 자동으로 실행
@@ -538,14 +570,14 @@ export default function App() {
       try {
         const dim = await getImageDimensions(selectedImages[0]);
         console.log(`[Veo 3.1] Generating video for resolution ${dim.width}x${dim.height}`);
-        
+
         // 실제 Veo 3.1 API 호출 시뮬레이션 (API Key, File URI 획득 등 포함)
         const apiKey = (import.meta as any).env?.VITE_GEMINI_API_KEY || '';
         const url = `https://generativelanguage.googleapis.com/v1beta/models/veo-3.1-generate-preview:generateVideo?key=${apiKey}`;
-        
+
         // 5초간 생성 대기 시뮬레이션
         await new Promise(resolve => setTimeout(resolve, 5000));
-        
+
         alert(`[VEO 3.1 생성을 완료했습니다]\n- 원본 이미지 해상도(${dim.width}x${dim.height}) 자동 인식 적용 완료.\n- API를 통해 생성된 영상이 준비되었습니다.`);
       } catch (e) {
         console.error('Veo API Error:', e);
@@ -553,7 +585,7 @@ export default function App() {
       } finally {
         setIsGenerating(false);
       }
-      return; 
+      return;
     }
 
     let currentPurpose: Purpose = (typeof overridePurpose === 'string') ? overridePurpose as Purpose : purpose;
@@ -618,21 +650,21 @@ export default function App() {
         else if (fileName.includes('low') || fileName.includes('low angle') || fileName.includes('로우앵글')) tag = '[TAG: LAV]';
         else if (fileName.includes('plan') || fileName.includes('floor') || fileName.includes('floorplan') || fileName.includes('평면도')) tag = '[TAG: PLN]';
         else if (fileName.includes('elevation') || fileName.includes('입면도') || fileName.includes('남측') || fileName.includes('북측') || fileName.includes('동측') || fileName.includes('서측')) tag = '[TAG: ELV]';
-        
+
         let score = 20;
         if (targetTags.includes(tag)) score = 100;
         else if (['[TAG: BEV]', '[TAG: FPV]', '[TAG: LAV]'].includes(tag)) score = 80;
         else if (['[TAG: PLN]', '[TAG: ELV]'].includes(tag)) score = 60;
-        
+
         return { src: img, score };
       }));
-      
+
       allScored.sort((a, b) => b.score - a.score);
-      
+
       let countToSelect = 8;
       if (currentPurpose === 'panel') countToSelect = 10;
       else if (currentPurpose === 'video') countToSelect = 2;
-      
+
       const autoSelected = allScored.slice(0, countToSelect).map(i => i.src);
       setSelectedImages(autoSelected);
       sourceImagesRaw = autoSelected;
@@ -746,7 +778,13 @@ export default function App() {
       // Removed the image auto-generation from here to strictly use the 5 default or selected images.
 
       const prompt = `
-You are an expert architectural and design document generator.
+${PROMPT_ARCHITECT}
+
+# WRITING GUIDELINES
+${REF_BOOK}
+
+# TASK
+You are an expert architectural and design document generator following the 'writer' protocol.
 The user wants to generate a document with ${pageStructures.length} pages.
 The purpose of the document is: ${currentPurpose}.
 The document title is: "${currentTitle}".
@@ -764,19 +802,18 @@ ${currentTextInput || "No input provided. Please generate generic, professional 
 The system has a 'Dynamic Fit' capability that shrinks font size if text overflows, but you MUST aim for the ideal length based on the dimensions below.
 
 **FOR PANEL (LANDSCAPE/PORTRAIT):**
-- **Panel Title (-1)**: Box is approx 373mm x 75mm (Landscape) / 770mm x 75mm (Portrait). Base: 140pt. **Limit: Max 12 chars (1 line).**
-- **Panel Subtitle (0)**: Box is approx 373mm x 60mm (Landscape) / 770mm x 45mm (Portrait). Base: 90pt. **Limit: Max 30 chars (1-2 lines).**
-- **Panel Intro (1)**: Box is approx 181mm x 115mm (Landscape) / 770mm x 74mm (Portrait). Base: 22pt. **Limit: Max 280 chars (~8-10 lines).**
-- **Panel Section Subtitles (2, 4)**: Box is approx 181mm x 25mm. Base: 42pt. **Limit: Max 15 chars (MUST BE 1 LINE).**
-- **Panel Section Body (3, 5)**: Box is approx 181mm x 195mm (Landscape) / 181mm x 115mm (Portrait). Base: 22pt. **Limit: Max 480 chars (~15-18 lines).**
+- **Panel Title (-1)**: Box is approx 373mm x 75mm (Landscape) / 770mm x 75mm (Portrait). Base: 140pt. **Limit: MUST summarize to fit in 1 line.**
+- **Panel Subtitle (0)**: Box is approx 373mm x 60mm (Landscape) / 770mm x 45mm (Portrait). Base: 90pt. **Limit: Max 2 lines.**
+- **Panel Intro (1)**: Box is approx 181mm x 115mm (Landscape) / 770mm x 74mm (Portrait). Base: 22pt. **Limit: Max 8-10 lines. Summarize content tightly.**
+- **Panel Section Subtitles (2, 4)**: Box is approx 181mm x 25mm. Base: 42pt. **Limit: MUST BE 1 LINE.**
+- **Panel Section Body (3, 5)**: Box is approx 181mm x 195mm (Landscape) / 181mm x 115mm (Portrait). Base: 22pt. **Limit: Max 15 lines. Remove fluff, use architectural keywords.**
 
 **FOR OTHER TEMPLATES:**
-- **Cover Title**: Box approx 1000mm x 200mm. Base 160pt. Max 12 chars.
-- **Cover Subtitle**: Box approx 1000mm x 100mm. Base 60pt. Max 45 chars.
-- **Body A Intro**: Box approx 1000mm x 300mm. Base 14pt. Max 600 chars.
-- **Body A Details**: Box approx 1000mm x 400mm. Base 11pt. Max 800 chars.
+- **Cover Title**: Box approx 1000mm x 200mm. Base 160pt. **Limit: Max 1 line.**
+- **Cover Subtitle**: Box approx 1000mm x 100mm. Base 60pt. **Limit: Max 2 lines. Summarize to fit.**
+- **Body A Intro/Details**: Box approx 107mm x 196mm (Side Column). Base 14pt. **Limit: Max 12 lines total. Summarize and organize input text to fit this narrow vertical box.**
 
-**CRITICAL RULE: DO NOT OVERFILL.** It is better to have slightly less text than too much.
+**CRITICAL RULE: DO NOT OVERFILL.** It is better to have slightly less text than too much. Your goal is to SUMMARIZE the input text so it fits beautifully in the designated area.
 - PAGE 1 MUST ALWAYS BE TYPE 'cover'.
 - PAGE 2 MUST ALWAYS BE TYPE 'toc'.
 - SUBSEQUENT PAGES SHOULD BE 'bodyA', 'bodyB', or 'bodyC'.
@@ -835,7 +872,7 @@ ${pageStructures.map((p, i) => `Page ${i + 1} (${p.type}): ${p.textCount} text f
       generatedContent = pageStructures.map((p, i) => {
         // [Phase 5] AI가 생성한 타이틀이 있으면 우선 사용 (특히 Report Cover)
         let pageTitle = p.type === 'cover' ? currentTitle : p.type === 'toc' ? 'Contents' : topics[i % topics.length];
-        
+
         // AI JSON 응답에 해당 페이지의 개별 타이틀이 있으면 덮어씌움
         if (generatedContent[i]?.title) {
           pageTitle = generatedContent[i].title;
@@ -869,7 +906,7 @@ ${pageStructures.map((p, i) => `Page ${i + 1} (${p.type}): ${p.textCount} text f
         const HERO_TAGS = ['[TAG: BEV]', '[TAG: FPV]', '[TAG: LAV]'];
         const HERO_PRIORITY: Record<string, number> = { '[TAG: BEV]': 1, '[TAG: FPV]': 2, '[TAG: LAV]': 3 };
         const MEDIUM_TAGS = ['[TAG: PLN]', '[TAG: ELV]'];
-        const SMALL_TAGS  = ['[TAG: DIA]'];
+        const SMALL_TAGS = ['[TAG: DIA]'];
 
         let pool = [...imgPool];
 
@@ -1008,35 +1045,35 @@ ${pageStructures.map((p, i) => `Page ${i + 1} (${p.type}): ${p.textCount} text f
       await document.fonts.ready;
       const elements = Array.from(exportContainerRef.current.children);
       const snapshots: any[] = [];
-      
+
       for (let i = 0; i < elements.length; i++) {
-         const el = elements[i] as HTMLElement;
-         try {
-           // 저해상도로 템플릿 포착
-           const canvas = await html2canvas(el, { 
-             scale: 0.25, 
-             useCORS: true,
-             logging: false,
-             backgroundColor: '#ffffff',
-             scrollY: -window.scrollY,
-             scrollX: 0
-           });
-           const dataUrl = canvas.toDataURL('image/jpeg', 0.8);
-           snapshots.push({
-             src: dataUrl,
-             type: 'GENERATED_TMPL',
-             dim: { x: canvas.width, y: canvas.height },
-             title: `Generated_Page_${i+1}`,
-             tag: '[TAG: DIA]' 
-           });
-         } catch(e) {
-           console.error("Thumbnail capture failed:", e);
-         }
+        const el = elements[i] as HTMLElement;
+        try {
+          // 저해상도로 템플릿 포착
+          const canvas = await html2canvas(el, {
+            scale: 0.25,
+            useCORS: true,
+            logging: false,
+            backgroundColor: '#ffffff',
+            scrollY: -window.scrollY,
+            scrollX: 0
+          });
+          const dataUrl = canvas.toDataURL('image/jpeg', 0.8);
+          snapshots.push({
+            src: dataUrl,
+            type: 'GENERATED_TMPL',
+            dim: { x: canvas.width, y: canvas.height },
+            title: `Generated_Page_${i + 1}`,
+            tag: '[TAG: DIA]'
+          });
+        } catch (e) {
+          console.error("Thumbnail capture failed:", e);
+        }
       }
       if (snapshots.length > 0) {
         setHistoryImages(prev => [...snapshots, ...prev]);
       }
-    }, 2000); 
+    }, 2000);
 
     setCurrentPageIndex(0);
     setIsGenerating(false);
@@ -1054,7 +1091,7 @@ ${pageStructures.map((p, i) => `Page ${i + 1} (${p.type}): ${p.textCount} text f
     }));
   };
 
-  const handleTextMouseUp = (pageId: string, textIndex: number) => {
+  const handleTextSelection = (pageId: string, textIndex: number) => {
     const selection = window.getSelection();
     if (selection && selection.toString().trim().length > 0) {
       const range = selection.getRangeAt(0);
@@ -1113,15 +1150,15 @@ ${pageStructures.map((p, i) => `Page ${i + 1} (${p.type}): ${p.textCount} text f
       const pageElements = exportContainerRef.current.children;
 
       if (pageElements.length === 0) {
-          alert('출력할 페이지가 없습니다.');
-          setIsDownloading(false);
-          return;
+        alert('출력할 페이지가 없습니다.');
+        setIsDownloading(false);
+        return;
       }
 
       // Check if elements have dimensions
       const firstEl = pageElements[0] as HTMLElement;
       if (firstEl.offsetWidth === 0 || firstEl.offsetHeight === 0) {
-          throw new Error("Export container dimensions are 0. Please ensure elements are rendered.");
+        throw new Error("Export container dimensions are 0. Please ensure elements are rendered.");
       }
 
       // 폰트 완전 로드 보장 (상단 텍스트 잘림 현상 방지)
@@ -1138,9 +1175,9 @@ ${pageStructures.map((p, i) => `Page ${i + 1} (${p.type}): ${p.textCount} text f
           const el = pageElements[i] as HTMLElement;
           // IMPORTANT: Use scale: 1 for A0 Panel to avoid huge canvas, or keep scale: 2 for A3
           const captureScale = (purpose === 'panel') ? 1 : 2;
-          const canvas = await html2canvas(el, { 
-            scale: captureScale, 
-            useCORS: true, 
+          const canvas = await html2canvas(el, {
+            scale: captureScale,
+            useCORS: true,
             logging: false,
             windowWidth: document.documentElement.offsetWidth,
             windowHeight: document.documentElement.offsetHeight,
@@ -1167,17 +1204,17 @@ ${pageStructures.map((p, i) => `Page ${i + 1} (${p.type}): ${p.textCount} text f
             for (let i = 0; i < pageElements.length; i++) {
               const el = pageElements[i] as HTMLElement;
               const captureScale = (purpose === 'panel') ? 1 : 2;
-              const canvas = await html2canvas(el, { 
-                scale: captureScale, 
-                useCORS: true, 
+              const canvas = await html2canvas(el, {
+                scale: captureScale,
+                useCORS: true,
                 logging: false,
                 windowWidth: document.documentElement.offsetWidth,
                 windowHeight: document.documentElement.offsetHeight,
                 scrollY: -window.scrollY,
                 scrollX: 0
               });
-              
-              const imgBlob = await new Promise<Blob | null>(resolve => 
+
+              const imgBlob = await new Promise<Blob | null>(resolve =>
                 canvas.toBlob(blob => resolve(blob), `image/${exportFormat}`, exportFormat === 'jpeg' ? 0.95 : undefined)
               );
 
@@ -1206,7 +1243,7 @@ ${pageStructures.map((p, i) => `Page ${i + 1} (${p.type}): ${p.textCount} text f
         // Handle Vite's CommonJS default export quirks
         const ZipConstructor = (JSZip as any).default || JSZip;
         const zip = new ZipConstructor();
-        
+
         // Create a root folder within the zip named after the title
         const rootFolderName = `${title || 'document'}_images`;
         const folder = zip.folder(rootFolderName);
@@ -1214,15 +1251,15 @@ ${pageStructures.map((p, i) => `Page ${i + 1} (${p.type}): ${p.textCount} text f
         for (let i = 0; i < pageElements.length; i++) {
           const el = pageElements[i] as HTMLElement;
           const captureScale = (purpose === 'panel') ? 1 : 2;
-          const canvas = await html2canvas(el, { 
-            scale: captureScale, 
+          const canvas = await html2canvas(el, {
+            scale: captureScale,
             useCORS: true,
             windowWidth: document.documentElement.offsetWidth,
             windowHeight: document.documentElement.offsetHeight,
             scrollY: -window.scrollY,
             scrollX: 0
           });
-          const imgBlob = await new Promise<Blob | null>(resolve => 
+          const imgBlob = await new Promise<Blob | null>(resolve =>
             canvas.toBlob(blob => resolve(blob), `image/${exportFormat}`, exportFormat === 'jpeg' ? 0.95 : undefined)
           );
 
@@ -1232,16 +1269,16 @@ ${pageStructures.map((p, i) => `Page ${i + 1} (${p.type}): ${p.textCount} text f
         }
 
         const zipBlob = await zip.generateAsync({ type: 'blob' });
-        
+
         // --- 로컬 서버 자동 저장 시도 (C:\Users\Crete_\Pictures\cai-print) ---
         try {
           const imageDatas = await Promise.all(
             Array.from(pageElements).map(async (el) => {
-              const c = await html2canvas(el as HTMLElement, { 
-                scale: (purpose === 'panel') ? 1 : 2, 
-                useCORS: true, 
-                scrollY: -window.scrollY, 
-                scrollX: 0 
+              const c = await html2canvas(el as HTMLElement, {
+                scale: (purpose === 'panel') ? 1 : 2,
+                useCORS: true,
+                scrollY: -window.scrollY,
+                scrollX: 0
               });
               return c.toDataURL(`image/${exportFormat}`, 0.95);
             })
@@ -1284,14 +1321,11 @@ ${pageStructures.map((p, i) => `Page ${i + 1} (${p.type}): ${p.textCount} text f
     <div className="h-screen bg-[#f5f5f5] flex flex-col font-sans text-black overflow-hidden">
       {/* Header */}
       <header className="h-16 bg-white border-b border-gray-200 flex items-center px-6 shrink-0">
-        <h1 className="text-2xl font-bold tracking-tight mr-6">CAI CANVAS</h1>
-        <input
-          type="text"
-          value={title}
-          onChange={(e) => setTitle(e.target.value)}
-          className="text-lg border-b border-black focus:outline-none pb-1 w-64 bg-transparent"
-          placeholder="문서 제목"
-        />
+        <div className="flex items-center gap-3">
+          <h1 className="text-2xl font-bold tracking-tight text-gray-900">CAI CANVAS</h1>
+          <div className="h-6 w-px bg-gray-300 mx-1" />
+          <span className="text-xl font-bold tracking-tight text-gray-800">No11. print</span>
+        </div>
       </header>
 
       {/* Main Content */}
@@ -1300,13 +1334,13 @@ ${pageStructures.map((p, i) => `Page ${i + 1} (${p.type}): ${p.textCount} text f
         <div className="absolute left-6 top-1/2 -translate-y-1/2 z-40 flex flex-col gap-3">
           {/* Undo Button */}
           <button className="w-12 h-12 bg-white rounded-full shadow-lg border border-gray-200 flex items-center justify-center text-gray-500 hover:text-black hover:bg-gray-50 transition-all group relative">
-            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M3 7v6h6"/><path d="M21 17a9 9 0 0 0-9-9 9 9 0 0 0-6 2.3L3 13"/></svg>
+            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M3 7v6h6" /><path d="M21 17a9 9 0 0 0-9-9 9 9 0 0 0-6 2.3L3 13" /></svg>
             <span className="absolute left-full ml-2 px-2 py-1 bg-gray-800 text-white text-[10px] rounded opacity-0 group-hover:opacity-100 pointer-events-none whitespace-nowrap">Undo</span>
           </button>
-          
+
           {/* Redo Button */}
           <button className="w-12 h-12 bg-white rounded-full shadow-lg border border-gray-200 flex items-center justify-center text-gray-500 hover:text-black hover:bg-gray-50 transition-all group relative">
-            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M21 7v6h-6"/><path d="M3 17a9 9 0 0 1 9-9 9 9 0 0 1 6 2.3l3 2.7"/></svg>
+            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M21 7v6h-6" /><path d="M3 17a9 9 0 0 1 9-9 9 9 0 0 1 6 2.3l3 2.7" /></svg>
             <span className="absolute left-full ml-2 px-2 py-1 bg-gray-800 text-white text-[10px] rounded opacity-0 group-hover:opacity-100 pointer-events-none whitespace-nowrap">Redo</span>
           </button>
 
@@ -1317,11 +1351,11 @@ ${pageStructures.map((p, i) => `Page ${i + 1} (${p.type}): ${p.textCount} text f
               if (!isLibraryOpen) setIsHistoryOpen(false);
             }}
             className={cn(
-               "w-12 h-12 rounded-full shadow-xl flex items-center justify-center transition-all group relative",
-               isLibraryOpen ? "bg-black text-white" : "bg-white text-gray-500 border border-gray-200"
+              "w-12 h-12 rounded-full shadow-xl flex items-center justify-center transition-all group relative",
+              isLibraryOpen ? "bg-black text-white" : "bg-white text-gray-500 border border-gray-200"
             )}
           >
-            <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><rect width="18" height="18" x="3" y="3" rx="2" ry="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>
+            <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><rect width="18" height="18" x="3" y="3" rx="2" ry="2" /><circle cx="8.5" cy="8.5" r="1.5" /><polyline points="21 15 16 10 5 21" /></svg>
             <span className="absolute left-full ml-2 px-2 py-1 bg-gray-800 text-white text-[10px] rounded opacity-0 group-hover:opacity-100 pointer-events-none whitespace-nowrap">{isLibraryOpen ? 'Close Library' : 'Open Library'}</span>
           </button>
 
@@ -1343,7 +1377,9 @@ ${pageStructures.map((p, i) => `Page ${i + 1} (${p.type}): ${p.textCount} text f
 
         {/* Library Pop-up Panel */}
         <div className={cn(
-          "absolute left-[90px] top-1/2 -translate-y-1/2 w-[340px] max-h-[80vh] bg-[#fdfdfd] border border-gray-200 rounded-2xl shadow-[0_15px_40px_rgba(0,0,0,0.12)] flex flex-col pt-6 pb-4 px-5 transition-all duration-400 ease-[cubic-bezier(0.16,1,0.3,1)] z-30 origin-left",
+          "absolute left-[80px] top-1/2 -translate-y-1/2 bg-[#fdfdfd] border border-gray-200 rounded-2xl shadow-[0_15px_40px_rgba(0,0,0,0.12)] flex flex-col pt-6 pb-4 px-5 transition-all duration-400 ease-[cubic-bezier(0.16,1,0.3,1)] z-30 origin-left",
+          isTablet ? "w-[280px]" : "w-[340px]",
+          isTablet ? "max-h-[70vh]" : "max-h-[80vh]",
           isLibraryOpen ? "opacity-100 scale-100 translate-x-0" : "opacity-0 scale-95 -translate-x-4 pointer-events-none"
         )}>
           <div className="flex justify-between items-center mb-6 px-1">
@@ -1353,77 +1389,17 @@ ${pageStructures.map((p, i) => `Page ${i + 1} (${p.type}): ${p.textCount} text f
               <input type="file" multiple accept="image/*" className="hidden" onChange={handleFileUpload} />
             </label>
           </div>
-          
+
           <div className="flex-1 overflow-y-auto [&::-webkit-scrollbar]:hidden w-full">
             <div className="grid grid-cols-3 gap-2 pb-2">
               {images.map((imgObj, idx) => {
                 const img = imgObj.src;
                 let typeLabel = imgObj.type;
                 if (!typeLabel) {
-                   const match = img.match(/([^/]+) -\d+\.[a-zA-Z]+$/);
-                   if (match) typeLabel = match[1];
+                  const match = img.match(/([^/]+) -\d+\.[a-zA-Z]+$/);
+                  if (match) typeLabel = match[1];
                 }
                 return (
-                <div key={idx} className="relative group/item aspect-square w-full">
-                  <button
-                    onClick={() => handleImageSelect(img)}
-                    draggable
-                    onDragStart={(e) => handleLibraryImageDragStart(e, img)}
-                    onDragEnd={handleLibraryImageDragEnd}
-                    className={cn(
-                      "w-full h-full border overflow-hidden transition-all rounded-xl block cursor-grab active:cursor-grabbing relative bg-gray-100",
-                      selectedImages.includes(img) ? "border-black shadow-inner ring-2 ring-black/10 ring-inset" : "border-transparent hover:border-gray-300",
-                      draggingImgSrc === img && "ring-4 ring-blue-500 opacity-50 scale-95"
-                    )}
-                  >
-                    <img src={img} alt={`source-${idx}`} className="w-full h-full object-cover pointer-events-none mix-blend-multiply" />
-                    {typeLabel && (
-                      <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/60 via-black/30 to-transparent pt-6 pb-1.5 px-1 text-white text-[9px] leading-none text-center font-bold tracking-tighter truncate drop-shadow-md">
-                        {typeLabel.toUpperCase()}
-                      </div>
-                    )}
-                    {draggingImgSrc === img && (
-                      <div className="absolute inset-0 bg-blue-500/20 flex items-center justify-center backdrop-blur-[1px]">
-                         <div className="w-4 h-4 rounded-full bg-white animate-ping" />
-                      </div>
-                    )}
-                  </button>
-                  <button
-                    onClick={() => setHeroImage(heroImage === img ? null : img)}
-                    className={cn("absolute -top-1.5 -right-1.5 p-1 rounded-full shadow-md opacity-0 group-hover/item:opacity-100 transition-all z-10", heroImage === img ? "opacity-100 bg-yellow-400 text-white hover:bg-yellow-500" : "bg-white text-gray-400 hover:text-black hover:bg-gray-100")}
-                    title="Make Hero Image (1st Priority)"
-                  >
-                    <Crown size={12} strokeWidth={2.5} />
-                  </button>
-                </div>
-              )})}
-            </div>
-          </div>
-        </div>
-
-        {/* History Pop-up Panel */}
-        <div className={cn(
-          "absolute left-[90px] top-1/2 -translate-y-1/2 w-[340px] max-h-[80vh] bg-[#fdfdfd] border border-gray-200 rounded-2xl shadow-[0_15px_40px_rgba(0,0,0,0.12)] flex flex-col pt-6 pb-4 px-5 transition-all duration-400 ease-[cubic-bezier(0.16,1,0.3,1)] z-30 origin-left",
-          isHistoryOpen ? "opacity-100 scale-100 translate-x-0" : "opacity-0 scale-95 -translate-x-4 pointer-events-none"
-        )}>
-          <div className="flex justify-between items-center mb-6 px-1">
-            <h2 className="text-[13px] font-black tracking-widest text-black">HISTORY</h2>
-            <div className="text-[9px] text-gray-400 font-bold uppercase tracking-widest">Auto Captured</div>
-          </div>
-          
-          <div className="flex-1 overflow-y-auto [&::-webkit-scrollbar]:hidden w-full">
-            {historyImages.length === 0 ? (
-               <div className="flex flex-col items-center justify-center h-40 text-gray-300 gap-2">
-                 <History size={32} strokeWidth={1} />
-                 <span className="text-[10px] font-bold">NO HISTORY YET</span>
-               </div>
-            ) : (
-              <div className="grid grid-cols-3 gap-2 pb-2">
-                {historyImages.map((imgObj, idx) => {
-                  const img = imgObj.src;
-                  let typeLabel = imgObj.type === 'GENERATED_TMPL' ? 'Snapshot' : imgObj.type;
-                  
-                  return (
                   <div key={idx} className="relative group/item aspect-square w-full">
                     <button
                       onClick={() => handleImageSelect(img)}
@@ -1436,7 +1412,7 @@ ${pageStructures.map((p, i) => `Page ${i + 1} (${p.type}): ${p.textCount} text f
                         draggingImgSrc === img && "ring-4 ring-blue-500 opacity-50 scale-95"
                       )}
                     >
-                      <img src={img} alt={`history-${idx}`} className="w-full h-full object-cover pointer-events-none mix-blend-multiply" />
+                      <img src={img} alt={`source-${idx}`} className="w-full h-full object-cover pointer-events-none mix-blend-multiply" />
                       {typeLabel && (
                         <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/60 via-black/30 to-transparent pt-6 pb-1.5 px-1 text-white text-[9px] leading-none text-center font-bold tracking-tighter truncate drop-shadow-md">
                           {typeLabel.toUpperCase()}
@@ -1444,7 +1420,7 @@ ${pageStructures.map((p, i) => `Page ${i + 1} (${p.type}): ${p.textCount} text f
                       )}
                       {draggingImgSrc === img && (
                         <div className="absolute inset-0 bg-blue-500/20 flex items-center justify-center backdrop-blur-[1px]">
-                           <div className="w-4 h-4 rounded-full bg-white animate-ping" />
+                          <div className="w-4 h-4 rounded-full bg-white animate-ping" />
                         </div>
                       )}
                     </button>
@@ -1456,7 +1432,71 @@ ${pageStructures.map((p, i) => `Page ${i + 1} (${p.type}): ${p.textCount} text f
                       <Crown size={12} strokeWidth={2.5} />
                     </button>
                   </div>
-                )})}
+                )
+              })}
+            </div>
+          </div>
+        </div>
+
+        {/* History Pop-up Panel */}
+        <div className={cn(
+          "absolute left-[80px] top-1/2 -translate-y-1/2 bg-[#fdfdfd] border border-gray-200 rounded-2xl shadow-[0_15px_40px_rgba(0,0,0,0.12)] flex flex-col pt-6 pb-4 px-5 transition-all duration-400 ease-[cubic-bezier(0.16,1,0.3,1)] z-30 origin-left",
+          isTablet ? "w-[280px]" : "w-[340px]",
+          isTablet ? "max-h-[70vh]" : "max-h-[80vh]",
+          isHistoryOpen ? "opacity-100 scale-100 translate-x-0" : "opacity-0 scale-95 -translate-x-4 pointer-events-none"
+        )}>
+          <div className="flex justify-between items-center mb-6 px-1">
+            <h2 className="text-[13px] font-black tracking-widest text-black">HISTORY</h2>
+            <div className="text-[9px] text-gray-400 font-bold uppercase tracking-widest">Auto Captured</div>
+          </div>
+
+          <div className="flex-1 overflow-y-auto [&::-webkit-scrollbar]:hidden w-full">
+            {historyImages.length === 0 ? (
+              <div className="flex flex-col items-center justify-center h-40 text-gray-300 gap-2">
+                <History size={32} strokeWidth={1} />
+                <span className="text-[10px] font-bold">NO HISTORY YET</span>
+              </div>
+            ) : (
+              <div className="grid grid-cols-3 gap-2 pb-2">
+                {historyImages.map((imgObj, idx) => {
+                  const img = imgObj.src;
+                  let typeLabel = imgObj.type === 'GENERATED_TMPL' ? 'Snapshot' : imgObj.type;
+
+                  return (
+                    <div key={idx} className="relative group/item aspect-square w-full">
+                      <button
+                        onClick={() => handleImageSelect(img)}
+                        draggable
+                        onDragStart={(e) => handleLibraryImageDragStart(e, img)}
+                        onDragEnd={handleLibraryImageDragEnd}
+                        className={cn(
+                          "w-full h-full border overflow-hidden transition-all rounded-xl block cursor-grab active:cursor-grabbing relative bg-gray-100",
+                          selectedImages.includes(img) ? "border-black shadow-inner ring-2 ring-black/10 ring-inset" : "border-transparent hover:border-gray-300",
+                          draggingImgSrc === img && "ring-4 ring-blue-500 opacity-50 scale-95"
+                        )}
+                      >
+                        <img src={img} alt={`history-${idx}`} className="w-full h-full object-cover pointer-events-none mix-blend-multiply" />
+                        {typeLabel && (
+                          <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/60 via-black/30 to-transparent pt-6 pb-1.5 px-1 text-white text-[9px] leading-none text-center font-bold tracking-tighter truncate drop-shadow-md">
+                            {typeLabel.toUpperCase()}
+                          </div>
+                        )}
+                        {draggingImgSrc === img && (
+                          <div className="absolute inset-0 bg-blue-500/20 flex items-center justify-center backdrop-blur-[1px]">
+                            <div className="w-4 h-4 rounded-full bg-white animate-ping" />
+                          </div>
+                        )}
+                      </button>
+                      <button
+                        onClick={() => setHeroImage(heroImage === img ? null : img)}
+                        className={cn("absolute -top-1.5 -right-1.5 p-1 rounded-full shadow-md opacity-0 group-hover/item:opacity-100 transition-all z-10", heroImage === img ? "opacity-100 bg-yellow-400 text-white hover:bg-yellow-500" : "bg-white text-gray-400 hover:text-black hover:bg-gray-100")}
+                        title="Make Hero Image (1st Priority)"
+                      >
+                        <Crown size={12} strokeWidth={2.5} />
+                      </button>
+                    </div>
+                  )
+                })}
               </div>
             )}
           </div>
@@ -1510,7 +1550,7 @@ ${pageStructures.map((p, i) => `Page ${i + 1} (${p.type}): ${p.textCount} text f
                     purpose={purpose}
                     orientation={orientation}
                     pageIndex={currentPageIndex}
-                    onTextMouseUp={handleTextMouseUp}
+                    onTextSelection={handleTextSelection}
                     allPages={generatedPages}
                   />
                 </div>
@@ -1569,7 +1609,7 @@ ${pageStructures.map((p, i) => `Page ${i + 1} (${p.type}): ${p.textCount} text f
                           transform: `scale(${scale})`
                         }}
                       >
-                        <PageRenderer page={page} purpose={purpose} orientation={orientation} pageIndex={idx} allPages={generatedPages} />
+                        <PageRenderer page={page} purpose={purpose} orientation={orientation} pageIndex={idx} allPages={generatedPages} onTextSelection={handleTextSelection} />
                       </div>
                       {currentPageIndex === idx && (
                         <div className="absolute top-0 right-0 bg-black text-white text-[10px] w-4 h-4 flex items-center justify-center z-10">
@@ -1596,10 +1636,13 @@ ${pageStructures.map((p, i) => `Page ${i + 1} (${p.type}): ${p.textCount} text f
         </div>
 
         {/* Right Panel: Control Panel */}
-        <div className="w-80 bg-white border-l border-gray-200 flex flex-col shrink-0 z-10 overflow-y-auto">
+        <div className={cn(
+          "bg-white border-l border-gray-200 flex flex-col shrink-0 z-10 overflow-y-auto transition-all duration-300",
+          isTablet ? "w-64" : "w-80"
+        )}>
           <div className="p-6 flex flex-col gap-8">
-            <div className="flex justify-between items-center border-b border-gray-200 pb-2">
-              <span className="font-medium text-sm">{title}</span>
+            <div className="flex justify-between items-center border-b border-gray-100 pb-3">
+              <span className="font-black text-base tracking-tight text-black uppercase">No11. print</span>
             </div>
 
             {/* AI 텍스트 자동생성 (Moved to top as requested) */}
@@ -1742,6 +1785,7 @@ ${pageStructures.map((p, i) => `Page ${i + 1} (${p.type}): ${p.textCount} text f
                   orientation={orientation}
                   pageIndex={idx}
                   allPages={generatedPages}
+                  onTextSelection={handleTextSelection}
                 />
               </div>
             );
@@ -1802,14 +1846,17 @@ function FloatingToolbar({
 
   return (
     <div
-      className="ai-floating-toolbar fixed bg-white border border-gray-200 shadow-[0_10px_40px_-10px_rgba(0,0,0,0.2)] rounded-2xl p-4 flex gap-5 items-center z-[9999] animate-in fade-in zoom-in duration-300 backdrop-blur-md bg-white/90"
+      className="ai-floating-toolbar fixed bg-white border border-gray-200 shadow-[0_15px_50px_rgba(0,0,0,0.2)] rounded-3xl p-5 flex gap-5 items-center z-[9999] animate-in fade-in zoom-in duration-300 backdrop-blur-xl bg-white/90"
       style={{
         left: `${info.rect.left + info.rect.width / 2}px`,
-        top: `${info.rect.top - 80}px`,
+        top: `${info.rect.top - 100}px`,
         transform: 'translateX(-50%)'
       }}
       onMouseDown={(e) => e.stopPropagation()}
+      onContextMenu={(e) => e.preventDefault()}
     >
+      {/* Balloon Arrow */}
+      <div className="absolute -bottom-2 left-1/2 -translate-x-1/2 w-4 h-4 bg-white/90 border-r border-b border-gray-200 rotate-45" />
       <div className="flex flex-col gap-1">
         <label className="text-[9px] font-black text-gray-400 uppercase tracking-tight">Family</label>
         <select
@@ -1854,7 +1901,7 @@ function FloatingToolbar({
 
 // --- Template Renderers ---
 
-function PageRenderer({ page, purpose, orientation, pageIndex, onTextMouseUp, allPages }: { page: PageData, purpose: Purpose, orientation: Orientation, pageIndex: number, onTextMouseUp?: (pageId: string, idx: number) => void, allPages?: PageData[] }) {
+function PageRenderer({ page, purpose, orientation, pageIndex, onTextSelection, allPages }: { page: PageData, purpose: Purpose, orientation: Orientation, pageIndex: number, onTextSelection?: (pageId: string, idx: number) => void, allPages?: PageData[] }) {
   const isPanel = page.type === 'panel';
   const isPortrait = isPanel && orientation === 'portrait';
 
@@ -1886,14 +1933,14 @@ function PageRenderer({ page, purpose, orientation, pageIndex, onTextMouseUp, al
 
   return (
     <div style={{ width: `${pxW}px`, height: `${pxH}px` }} className="bg-white overflow-hidden relative shrink-0">
-      {page.type === 'cover' && <TemplateCover page={page} onTextMouseUp={onTextMouseUp} />}
-      {page.type === 'toc' && <TemplateTOC page={page} allPages={allPages} onTextMouseUp={onTextMouseUp} />}
-      {page.type === 'bodyA' && <TemplateBodyA page={page} pageIndex={pageIndex} purpose={purpose} onTextMouseUp={onTextMouseUp} tocLabel={tocLabel} />}
-      {page.type === 'bodyB' && <TemplateBodyB page={page} pageIndex={pageIndex} purpose={purpose} onTextMouseUp={onTextMouseUp} tocLabel={tocLabel} />}
-      {page.type === 'bodyC' && <TemplateBodyC page={page} pageIndex={pageIndex} purpose={purpose} onTextMouseUp={onTextMouseUp} tocLabel={tocLabel} />}
-      {page.type === 'panel' && <TemplatePanel page={page} orientation={orientation} onTextMouseUp={onTextMouseUp} />}
-      {page.type === 'drawing' && <TemplateDrawing page={page} onTextMouseUp={onTextMouseUp} tocLabel={tocLabel} />}
-      {page.type === 'video' && <TemplateVideo page={page} onTextMouseUp={onTextMouseUp} />}
+      {page.type === 'cover' && <TemplateCover page={page} onTextSelection={onTextSelection} />}
+      {page.type === 'toc' && <TemplateTOC page={page} allPages={allPages} onTextSelection={onTextSelection} />}
+      {page.type === 'bodyA' && <TemplateBodyA page={page} pageIndex={pageIndex} purpose={purpose} onTextSelection={onTextSelection} tocLabel={tocLabel} />}
+      {page.type === 'bodyB' && <TemplateBodyB page={page} pageIndex={pageIndex} purpose={purpose} onTextSelection={onTextSelection} tocLabel={tocLabel} />}
+      {page.type === 'bodyC' && <TemplateBodyC page={page} pageIndex={pageIndex} purpose={purpose} onTextSelection={onTextSelection} tocLabel={tocLabel} />}
+      {page.type === 'panel' && <TemplatePanel page={page} orientation={orientation} onTextSelection={onTextSelection} />}
+      {page.type === 'drawing' && <TemplateDrawing page={page} onTextSelection={onTextSelection} tocLabel={tocLabel} />}
+      {page.type === 'video' && <TemplateVideo page={page} onTextSelection={onTextSelection} />}
     </div>
   );
 }

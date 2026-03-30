@@ -3,7 +3,7 @@ import React from 'react';
 import { PageData } from '../../types';
 import { getTextStyle, DraggableImage } from './Shared';
 
-export function TemplateDrawing({ page, onTextMouseUp, tocLabel: _tocLabel }: { page: PageData, onTextMouseUp?: (pageId: string, idx: number) => void, tocLabel?: string }) {
+export function TemplateDrawing({ page, onTextSelection, tocLabel: _tocLabel }: { page: PageData, onTextSelection?: (pageId: string, idx: number) => void, tocLabel?: string }) {
     const TB_BORDER_THICK = '1.5pt solid #000';
     const TB_BORDER_THIN = '0.5pt solid #000';
 
@@ -31,7 +31,9 @@ export function TemplateDrawing({ page, onTextMouseUp, tocLabel: _tocLabel }: { 
                     <div className="flex flex-col shrink-0" style={{ height: '12mm', borderBottom: TB_BORDER_THICK, padding: '2mm 3mm' }}>
                         <div style={{ fontFamily: 'S-CoreDream-8Heavy', fontSize: '5.5pt', color: '#000', textTransform: 'uppercase', marginBottom: '1mm' }}>PROJECT TITLE</div>
                         <div
-                            onMouseUp={() => onTextMouseUp?.(page.id, -1)}
+                            onMouseUp={() => onTextSelection?.(page.id, -1)}
+                            onTouchEnd={() => onTextSelection?.(page.id, -1)}
+                            onContextMenu={(e) => e.preventDefault()}
                             data-text-index="-1"
                             style={{ fontFamily: 'S-CoreDream-5Medium', fontSize: '8pt', ...getTextStyle(page.content.textStyles, -1) }}
                         >
@@ -46,7 +48,9 @@ export function TemplateDrawing({ page, onTextMouseUp, tocLabel: _tocLabel }: { 
                     <div className="flex flex-col" style={{ flex: 1, borderBottom: TB_BORDER_THICK, padding: '2mm 3mm' }}>
                         <div style={{ fontFamily: 'S-CoreDream-8Heavy', fontSize: '5.5pt', color: '#000', textTransform: 'uppercase', marginBottom: '1mm' }}>NOTE</div>
                         <div
-                            onMouseUp={() => onTextMouseUp?.(page.id, 0)}
+                            onMouseUp={() => onTextSelection?.(page.id, 0)}
+                            onTouchEnd={() => onTextSelection?.(page.id, 0)}
+                            onContextMenu={(e) => e.preventDefault()}
                             data-text-index="0"
                             style={{ fontFamily: 'S-CoreDream-5Medium', fontSize: '6pt', lineHeight: 1.5, color: '#000', ...getTextStyle(page.content.textStyles, 0) }}
                         >
@@ -62,7 +66,9 @@ export function TemplateDrawing({ page, onTextMouseUp, tocLabel: _tocLabel }: { 
                             <div key={i} className="flex flex-col shrink-0" style={{ borderBottom: borderStyle, padding: '1.5mm 3mm' }}>
                                 <div style={{ fontFamily: 'S-CoreDream-8Heavy', fontSize: '5pt', color: '#000', textTransform: 'uppercase' }}>{item.label}</div>
                                 <div
-                                    onMouseUp={() => onTextMouseUp?.(page.id, textIdx)}
+                                    onMouseUp={() => onTextSelection?.(page.id, textIdx)}
+                                    onTouchEnd={() => onTextSelection?.(page.id, textIdx)}
+                                    onContextMenu={(e) => e.preventDefault()}
                                     data-text-index={textIdx}
                                     style={{
                                         fontFamily: isDrawingNo ? 'S-CoreDream-8Heavy' : 'S-CoreDream-5Medium',

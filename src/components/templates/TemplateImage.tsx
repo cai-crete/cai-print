@@ -3,7 +3,7 @@ import React from 'react';
 import { PageData } from '../../types';
 import { getTextStyle, DraggableImage } from './Shared';
 
-export function TemplateImage({ page, onTextMouseUp }: { page: PageData, onTextMouseUp?: (pageId: string, idx: number) => void }) {
+export function TemplateImage({ page, onTextSelection }: { page: PageData, onTextSelection?: (pageId: string, idx: number) => void }) {
     return (
         <div className="w-full h-full bg-white relative overflow-hidden">
             {page.content.images[0] && (

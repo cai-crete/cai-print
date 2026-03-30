@@ -4,7 +4,7 @@ import { PageData, Orientation } from '../../types';
 import { getTextStyle, DraggableImage } from './Shared';
 import { useAutoFitText } from '../../hooks/useAutoFitText';
 
-export function TemplatePanel({ page, orientation, onTextMouseUp }: { page: PageData, orientation: Orientation, onTextMouseUp?: (pageId: string, idx: number) => void }) {
+export function TemplatePanel({ page, orientation, onTextSelection }: { page: PageData, orientation: Orientation, onTextSelection?: (pageId: string, idx: number) => void }) {
     const images = page.content.images || [];
     const tags = page.content.imageTags || [];
     const titles = page.content.imageTitles || [];
@@ -53,7 +53,9 @@ export function TemplatePanel({ page, orientation, onTextMouseUp }: { page: Page
                 <div className="text-cell overflow-hidden flex flex-col" style={{ gridColumn: '3 / 5', gridRow: '1' }}>
                     <div
                         ref={titleRef}
-                        onMouseUp={() => onTextMouseUp?.(page.id, -1)}
+                        onMouseUp={() => onTextSelection?.(page.id, -1)}
+                        onTouchEnd={() => onTextSelection?.(page.id, -1)}
+                        onContextMenu={(e) => e.preventDefault()}
                         data-text-index="-1"
                         className="font-black text-black leading-[1.0] tracking-[-4px] whitespace-nowrap"
                         style={{ fontSize: '140pt', alignSelf: 'start', ...getTextStyle(page.content.textStyles, -1) }}
@@ -64,7 +66,9 @@ export function TemplatePanel({ page, orientation, onTextMouseUp }: { page: Page
                 <div className="text-cell overflow-hidden flex flex-col" style={{ gridColumn: '3 / 5', gridRow: '2' }}>
                     <div
                         ref={text0Ref}
-                        onMouseUp={() => onTextMouseUp?.(page.id, 0)}
+                        onMouseUp={() => onTextSelection?.(page.id, 0)}
+                        onTouchEnd={() => onTextSelection?.(page.id, 0)}
+                        onContextMenu={(e) => e.preventDefault()}
                         data-text-index="0"
                         className="font-medium text-gray-500 leading-[1.1]"
                         style={{ fontSize: '90pt', alignSelf: 'start', wordBreak: 'keep-all', whiteSpace: 'pre-wrap', ...getTextStyle(page.content.textStyles, 0) }}
@@ -76,7 +80,9 @@ export function TemplatePanel({ page, orientation, onTextMouseUp }: { page: Page
                 <div className="text-cell overflow-hidden" style={{ gridColumn: '3 / 5', gridRow: '3' }}>
                     <div
                         ref={text1Ref}
-                        onMouseUp={() => onTextMouseUp?.(page.id, 1)}
+                        onMouseUp={() => onTextSelection?.(page.id, 1)}
+                        onTouchEnd={() => onTextSelection?.(page.id, 1)}
+                        onContextMenu={(e) => e.preventDefault()}
                         data-text-index="1"
                         className="font-extralight text-gray-700 leading-[1.6] h-full"
                         style={{ fontSize: '22pt', alignSelf: 'stretch', ...getTextStyle(page.content.textStyles, 1) }}
@@ -88,7 +94,9 @@ export function TemplatePanel({ page, orientation, onTextMouseUp }: { page: Page
                 <div className="text-cell overflow-hidden" style={{ gridColumn: '3 / 4', gridRow: '4' }}>
                     <div
                         ref={text2Ref}
-                        onMouseUp={() => onTextMouseUp?.(page.id, 2)}
+                        onMouseUp={() => onTextSelection?.(page.id, 2)}
+                        onTouchEnd={() => onTextSelection?.(page.id, 2)}
+                        onContextMenu={(e) => e.preventDefault()}
                         data-text-index="2"
                         className="font-medium text-black h-full"
                         style={{ fontSize: '42pt', alignSelf: 'start', ...getTextStyle(page.content.textStyles, 2) }}
@@ -99,7 +107,9 @@ export function TemplatePanel({ page, orientation, onTextMouseUp }: { page: Page
                 <div className="text-cell overflow-hidden" style={{ gridColumn: '4 / 5', gridRow: '4' }}>
                     <div
                         ref={text4Ref}
-                        onMouseUp={() => onTextMouseUp?.(page.id, 4)}
+                        onMouseUp={() => onTextSelection?.(page.id, 4)}
+                        onTouchEnd={() => onTextSelection?.(page.id, 4)}
+                        onContextMenu={(e) => e.preventDefault()}
                         data-text-index="4"
                         className="font-medium text-black h-full"
                         style={{ fontSize: '42pt', alignSelf: 'start', ...getTextStyle(page.content.textStyles, 4) }}
@@ -111,7 +121,9 @@ export function TemplatePanel({ page, orientation, onTextMouseUp }: { page: Page
                 <div className="text-cell overflow-hidden" style={{ gridColumn: '3 / 4', gridRow: '5' }}>
                     <div
                         ref={text3Ref}
-                        onMouseUp={() => onTextMouseUp?.(page.id, 3)}
+                        onMouseUp={() => onTextSelection?.(page.id, 3)}
+                        onTouchEnd={() => onTextSelection?.(page.id, 3)}
+                        onContextMenu={(e) => e.preventDefault()}
                         data-text-index="3"
                         className="font-extralight text-gray-600 leading-[1.6] h-full"
                         style={{ fontSize: '22pt', alignSelf: 'stretch', ...getTextStyle(page.content.textStyles, 3) }}
@@ -122,7 +134,9 @@ export function TemplatePanel({ page, orientation, onTextMouseUp }: { page: Page
                 <div className="text-cell overflow-hidden" style={{ gridColumn: '4 / 5', gridRow: '5' }}>
                     <div
                         ref={text5Ref}
-                        onMouseUp={() => onTextMouseUp?.(page.id, 5)}
+                        onMouseUp={() => onTextSelection?.(page.id, 5)}
+                        onTouchEnd={() => onTextSelection?.(page.id, 5)}
+                        onContextMenu={(e) => e.preventDefault()}
                         data-text-index="5"
                         className="font-extralight text-gray-600 leading-[1.6] h-full"
                         style={{ fontSize: '22pt', alignSelf: 'stretch', ...getTextStyle(page.content.textStyles, 5) }}
@@ -150,7 +164,9 @@ export function TemplatePanel({ page, orientation, onTextMouseUp }: { page: Page
             <div className="text-cell overflow-hidden flex flex-col" style={{ gridColumn: '1 / 5', gridRow: '1' }}>
                 <div
                     ref={titleRef}
-                    onMouseUp={() => onTextMouseUp?.(page.id, -1)}
+                    onMouseUp={() => onTextSelection?.(page.id, -1)}
+                    onTouchEnd={() => onTextSelection?.(page.id, -1)}
+                    onContextMenu={(e) => e.preventDefault()}
                     data-text-index="-1"
                     className="font-black text-black leading-[1.0] tracking-[-4px] whitespace-nowrap"
                     style={{ fontSize: '140pt', alignSelf: 'start', paddingTop: '5mm', ...getTextStyle(page.content.textStyles, -1) }}
@@ -161,7 +177,9 @@ export function TemplatePanel({ page, orientation, onTextMouseUp }: { page: Page
             <div className="text-cell overflow-hidden flex flex-col" style={{ gridColumn: '1 / 5', gridRow: '2' }}>
                 <div
                     ref={text0Ref}
-                    onMouseUp={() => onTextMouseUp?.(page.id, 0)}
+                    onMouseUp={() => onTextSelection?.(page.id, 0)}
+                    onTouchEnd={() => onTextSelection?.(page.id, 0)}
+                    onContextMenu={(e) => e.preventDefault()}
                     data-text-index="0"
                     className="font-medium text-gray-500 leading-[1.1]"
                     style={{ fontSize: '90pt', alignSelf: 'start', ...getTextStyle(page.content.textStyles, 0) }}
@@ -173,7 +191,9 @@ export function TemplatePanel({ page, orientation, onTextMouseUp }: { page: Page
             <div className="text-cell overflow-hidden" style={{ gridColumn: '1 / 5', gridRow: '3' }}>
                 <div
                     ref={text1Ref}
-                    onMouseUp={() => onTextMouseUp?.(page.id, 1)}
+                    onMouseUp={() => onTextSelection?.(page.id, 1)}
+                    onTouchEnd={() => onTextSelection?.(page.id, 1)}
+                    onContextMenu={(e) => e.preventDefault()}
                     data-text-index="1"
                     className="font-extralight text-gray-700 leading-[1.6] h-full"
                     style={{ fontSize: '22pt', wordBreak: 'keep-all', overflowWrap: 'break-word', ...getTextStyle(page.content.textStyles, 1) }}
@@ -187,7 +207,9 @@ export function TemplatePanel({ page, orientation, onTextMouseUp }: { page: Page
             <div className="text-cell overflow-hidden" style={{ gridColumn: '4', gridRow: '4' }}>
                 <div
                     ref={text2Ref}
-                    onMouseUp={() => onTextMouseUp?.(page.id, 2)}
+                    onMouseUp={() => onTextSelection?.(page.id, 2)}
+                    onTouchEnd={() => onTextSelection?.(page.id, 2)}
+                    onContextMenu={(e) => e.preventDefault()}
                     data-text-index="2"
                     className="font-medium text-black h-full"
                     style={{ fontSize: '42pt', alignSelf: 'start', ...getTextStyle(page.content.textStyles, 2) }}
@@ -199,7 +221,9 @@ export function TemplatePanel({ page, orientation, onTextMouseUp }: { page: Page
             <div className="text-cell overflow-hidden" style={{ gridColumn: '4', gridRow: '5' }}>
                 <div
                     ref={text3Ref}
-                    onMouseUp={() => onTextMouseUp?.(page.id, 3)}
+                    onMouseUp={() => onTextSelection?.(page.id, 3)}
+                    onTouchEnd={() => onTextSelection?.(page.id, 3)}
+                    onContextMenu={(e) => e.preventDefault()}
                     data-text-index="3"
                     className="font-extralight text-gray-600 leading-[1.6] h-full"
                     style={{ fontSize: '22pt', wordBreak: 'keep-all', overflowWrap: 'break-word', ...getTextStyle(page.content.textStyles, 3) }}
@@ -211,7 +235,9 @@ export function TemplatePanel({ page, orientation, onTextMouseUp }: { page: Page
             <div className="text-cell overflow-hidden" style={{ gridColumn: '4', gridRow: '6' }}>
                 <div
                     ref={text4Ref}
-                    onMouseUp={() => onTextMouseUp?.(page.id, 4)}
+                    onMouseUp={() => onTextSelection?.(page.id, 4)}
+                    onTouchEnd={() => onTextSelection?.(page.id, 4)}
+                    onContextMenu={(e) => e.preventDefault()}
                     data-text-index="4"
                     className="font-medium text-black h-full"
                     style={{ fontSize: '42pt', alignSelf: 'start', ...getTextStyle(page.content.textStyles, 4) }}
@@ -223,7 +249,9 @@ export function TemplatePanel({ page, orientation, onTextMouseUp }: { page: Page
             <div className="text-cell overflow-hidden" style={{ gridColumn: '4', gridRow: '7' }}>
                 <div
                     ref={text5Ref}
-                    onMouseUp={() => onTextMouseUp?.(page.id, 5)}
+                    onMouseUp={() => onTextSelection?.(page.id, 5)}
+                    onTouchEnd={() => onTextSelection?.(page.id, 5)}
+                    onContextMenu={(e) => e.preventDefault()}
                     data-text-index="5"
                     className="font-extralight text-gray-600 leading-[1.6] h-full"
                     style={{ fontSize: '22pt', wordBreak: 'keep-all', overflowWrap: 'break-word', ...getTextStyle(page.content.textStyles, 5) }}

@@ -97,10 +97,10 @@ export function computeTocLabels(allPages: PageData[]): Map<string, string> {
 interface TemplateTOCProps {
   page: PageData;
   allPages?: PageData[];  // 전체 페이지 배열 (동적 목차 생성용)
-  onTextMouseUp?: (pageId: string, idx: number) => void;
+  onTextSelection?: (pageId: string, idx: number) => void;
 }
 
-export function TemplateTOC({ page, allPages, onTextMouseUp }: TemplateTOCProps) {
+export function TemplateTOC({ page, allPages, onTextSelection }: TemplateTOCProps) {
   const text = page.content.text || [];
 
   // 표지(cover)와 목차(toc) 자신을 제외한 순수 본문 페이지 추출
@@ -170,7 +170,9 @@ export function TemplateTOC({ page, allPages, onTextMouseUp }: TemplateTOCProps)
             </div>
             <div>
               <div
-                onMouseUp={() => !useDynamic && onTextMouseUp?.(page.id, i * 2)}
+                onMouseUp={() => !useDynamic && onTextSelection?.(page.id, i * 2)}
+                onTouchEnd={() => !useDynamic && onTextSelection?.(page.id, i * 2)}
+                onContextMenu={(e) => e.preventDefault()}
                 data-text-index={i * 2}
                 className="font-black text-black max-w-[110mm] overflow-hidden break-keep"
                 style={{ fontSize: '18pt', ...(useDynamic ? {} : {}) }}
@@ -178,7 +180,9 @@ export function TemplateTOC({ page, allPages, onTextMouseUp }: TemplateTOCProps)
                 {itemTitle}
               </div>
               <div
-                onMouseUp={() => !useDynamic && onTextMouseUp?.(page.id, i * 2 + 1)}
+                onMouseUp={() => !useDynamic && onTextSelection?.(page.id, i * 2 + 1)}
+                onTouchEnd={() => !useDynamic && onTextSelection?.(page.id, i * 2 + 1)}
+                onContextMenu={(e) => e.preventDefault()}
                 data-text-index={i * 2 + 1}
                 className="text-gray-400 max-w-[110mm] overflow-hidden break-keep"
                 style={{ fontSize: '12pt' }}
