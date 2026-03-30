@@ -166,10 +166,13 @@ export default function App() {
     renderedFontFamily?: string;
   } | null>(null);
   const [isTablet, setIsTablet] = useState(false);
+  const [isMobile, setIsMobile] = useState(false);
 
   useEffect(() => {
     const handleResize = () => {
-      setIsTablet(window.innerWidth < 1200);
+      // iPad Air threshold (~1180px) and general mobile/tablet detection
+      setIsTablet(window.innerWidth >= 768 && window.innerWidth < 1280);
+      setIsMobile(window.innerWidth < 768);
     };
     handleResize();
     window.addEventListener('resize', handleResize);
@@ -211,15 +214,21 @@ export default function App() {
       const pxW = mmW * PX_PER_MM;
       const pxH = mmH * PX_PER_MM;
 
-      const padding = isTablet ? 40 : 80; // 태블릿에서 여백을 줄여 템플릿 공간 확보
-      const availableWidth = container.clientWidth - padding;
+      // Adjust available space if sidebar is occupying layout (isMobile/isTablet)
+      let sidebarWidth = 0;
+      if ((isTablet || isMobile) && (isLibraryOpen || isHistoryOpen)) {
+        sidebarWidth = 280; // Matches the width set in the library panel
+      }
+
+      const padding = (isTablet || isMobile) ? 30 : 80;
+      const availableWidth = container.clientWidth - sidebarWidth - padding;
       const availableHeight = container.clientHeight - padding;
 
       const scaleX = availableWidth / pxW;
       const scaleY = availableHeight / pxH;
 
       // 화면에 꽉 차는 배율(fit)에 0.9를 곱하여(90%) 상하좌우 여유 확보
-      const newScale = Math.min(scaleX, scaleY) * 0.9;
+      const newScale = Math.min(scaleX, scaleY) * 0.95;
 
       fitScaleRef.current = newScale; // 기준 배율 저장
       setDynamicScale(newScale);
@@ -230,7 +239,7 @@ export default function App() {
     updateScale();
 
     return () => observer.disconnect();
-  }, [currentPageIndex, generatedPages[currentPageIndex]?.type, orientation]);
+  }, [currentPageIndex, generatedPages[currentPageIndex]?.type, orientation, isLibraryOpen, isHistoryOpen, isTablet, isMobile]);
 
   // 키보드 화살표 키 → 페이지 이동
   useEffect(() => {
@@ -453,7 +462,8 @@ ${ERROR_CORRECTION}
 **문서 목적: ${purposeDescription}**
 
 # PHYSICAL CONSTRAINTS (물리적 제약 조건 - 중요)
-생성된 각 텍스트는 해당 영역의 물리적 텍스트 박스(Text Box) 크기를 절대 초과해서는 안 됩니다.
+- **브랜드 고유 명칭**: 'No11. print'는 본 프로그램의 공식 브랜드 명칭입니다. 문맥상 필요한 경우를 제외하고는 텍스트 내용 자체에 이 명칭을 남용하지 마십시오.
+- 생성된 각 텍스트는 해당 영역의 물리적 텍스트 박스(Text Box) 크기를 절대 초과해서는 안 됩니다.
 1. **보고서 본문 (Report Body)**: 107mm x 196mm 영역 내 14pt 폰트 적용. 최대 10~12줄(약 400자 이내)로 요약/축약하십시오.
 2. **패널 (Panel)**: 정해진 그리드 칸을 넘지 않도록 문장을 단조(Simple)화하고 공간 묘사 위주로 핵심만 정리하십시오.
 3. **대제목 (Main Title)**: 20자 이내로 압축적으로 표현하십시오.
@@ -545,9 +555,9 @@ ${systemPrompt}
 
     // [Phase 8] Extract title from current text input if available
     const fallbackMatch = currentTextInput.match(/\*\*대제목[:\s：]+\*\*\s*(.+)/i) || currentTextInput.match(/\*\s*\*\*대제목[:\s：]+\*\*\s*(.+)/i);
-    if (fallbackMatch && (currentTitle === 'No11. print' || !overrideTitle)) {
+    if (fallbackMatch && (currentTitle === 'writer protocol' || !overrideTitle)) {
       currentTitle = fallbackMatch[1].trim().replace(/[*_`]/g, '').trim();
-      // setTitle(currentTitle); // 이제 전체 타이틀은 'No11. print'로 고정되므로 state 업데이트를 방지합니다.
+      // setTitle(currentTitle); // 이제 전체 타이틀은 'writer protocol'로 고정되므로 state 업데이트를 방지합니다.
     }
 
     // [Phase 5] 자동 AI 텍스트 생성 연동: 텍스트가 필요한 모드인데 기본값이면 자동으로 실행
@@ -731,7 +741,7 @@ ${systemPrompt}
           heroAssigned = true;
         }
       } else if (imgInfo.priority === 1) {
-        // Demote manual hero if it doesn't match the new dynamic rule (optional, but requested for 'auto hierarchy')
+        // Demote manual hero if it doesn't match the new dynamic rule
         imgInfo.priority = 2;
         imgInfo.score = 80;
       }
@@ -741,94 +751,50 @@ ${systemPrompt}
     analyzedImages.sort((a, b) => b.score - a.score);
 
     const pageStructures: { type: string, textCount: number, description: string }[] = [];
-    const bodyTypes = ['bodyA', 'bodyB', 'bodyC'] as const;
-
     for (let i = 0; i < numPages; i++) {
       if (currentPurpose === 'drawing') {
-        pageStructures.push({ type: 'drawing', textCount: 5, description: "Drawing page. text[0]: NOTE (multiline), text[1]: DESIGNED BY, text[2]: ARCHITECTURAL ENGINEER, text[3]: APPROVED BY, text[4]: APPROVAL DATE (YYYY.MM.DD)" });
+        pageStructures.push({ type: 'drawing', textCount: 5, description: "Drawing page." });
       } else if (currentPurpose === 'panel') {
-        pageStructures.push({ type: 'panel', textCount: 13, description: "Panel page. text[0]: Subtitle, text[1]: Main description, text[2]: Left section title, text[3]: Left section description, text[4]: Right section title, text[5]: Right section description. text[6] to text[12]: Short captions for up to 7 images." });
+        pageStructures.push({ type: 'panel', textCount: 13, description: "Panel page." });
       } else if (currentPurpose === 'video') {
-        pageStructures.push({ type: 'video', textCount: 1, description: "Video storyboard page. text[0]: Scene description." });
+        pageStructures.push({ type: 'video', textCount: 1, description: "VideoStoryboard page." });
       } else if (currentPurpose === 'report') {
         if (i === 0) {
-          pageStructures.push({ type: 'cover', textCount: 1, description: "Cover page. text[0]: A catchy subtitle or brief description (1-2 sentences)." });
+          pageStructures.push({ type: 'cover', textCount: 1, description: "Cover page." });
         } else if (i === 1 && numPages > 1) {
-          pageStructures.push({ type: 'toc', textCount: 12, description: "Table of Contents. 6 pairs of [Topic Title, Short Description]. Total 12 strings." });
+          pageStructures.push({ type: 'toc', textCount: 12, description: "Table of Contents." });
         } else {
-          const offset = 2;
-          const type = bodyTypes[Math.max(0, i - offset) % bodyTypes.length];
-          if (type === 'bodyA') {
-            pageStructures.push({ type, textCount: 2, description: "Body A. text[0]: Main detailed paragraph (3-4 sentences), text[1]: Secondary detailed paragraph (4-5 sentences)." });
-          } else if (type === 'bodyB') {
-            pageStructures.push({ type, textCount: 5, description: "Body B. text[0-2]: 3 short process steps. text[3]: Left image caption/description. text[4]: Right image caption/description." });
-          } else if (type === 'bodyC') {
-            pageStructures.push({ type, textCount: 6, description: "Body C. text[0-2]: 3 short process steps. text[3-5]: 3 short image captions/descriptions." });
-          }
+          // AI will decide the layout between bodyA, bodyB, bodyC
+          pageStructures.push({ type: 'body_dynamic', textCount: 6, description: "Dynamic Body Page. AI must CHOOSE layout ('bodyA', 'bodyB', 'bodyC')." });
         }
       }
     }
 
-    let generatedContent: any[] = [];
-
+    let aiResponseRaw: any[] = [];
     try {
       const ai = new GoogleGenAI({ apiKey: (import.meta as any).env?.VITE_GEMINI_API_KEY || process.env.GEMINI_API_KEY || '' });
-
-      // Auto generation from prompt is entirely handled by text Gemini model.
-      // Removed the image auto-generation from here to strictly use the 5 default or selected images.
-
       const prompt = `
 ${PROMPT_ARCHITECT}
-
 # WRITING GUIDELINES
 ${REF_BOOK}
 
 # TASK
-You are an expert architectural and design document generator following the 'writer' protocol.
-The user wants to generate a document with ${pageStructures.length} pages.
-The purpose of the document is: ${currentPurpose}.
-The document title is: "${currentTitle}".
-The user provided the following raw text input:
-"""
-${currentTextInput || "No input provided. Please generate generic, professional placeholder content suitable for an architectural/design document."}
-"""
+Generate architectural content for ${pageStructures.length} pages.
+Purpose: ${currentPurpose}, Title: "${currentTitle}".
+Input: """${currentTextInput || "Professional placeholder content."}"""
 
-**CRITICAL RULES FOR TEXT LENGTH & CONTENT QUALITY:**
-1. THE TEXT MUST FIT WITHIN THE DESIGNATED LAYOUT BOXES WITHOUT OVERFLOWING.
-2. IF THE INPUT TEXT IS TOO LONG, AUTOMATICALLY **SUMMARIZE AND CONDENSE** IT INTO A NATURAL, WELL-STRUCTURED VERSION.
-3. **DO NOT USE ELLIPSIS (...)** OR TRUNCATE THE TEXT. OUTPUT MUST BE COMPLETE AND COHERENT.
-4. GENERATE THE CONTENT IN THE SAME LANGUAGE AS THE USER'S INPUT (DEFAULT TO KOREAN).
-**STRICTLY ADHERE TO THE FOLLOWING PHYSICAL BOUNDARY CONSTRAINTS (mm) AND BASE FONT SIZES (pt):**
-The system has a 'Dynamic Fit' capability that shrinks font size if text overflows, but you MUST aim for the ideal length based on the dimensions below.
+**STRICT RULES:**
+1. **Identity**: The project name is 'No11. print'. Maintain a professional architectural tone.
+2. Fit text to layouts. Summarize if too long.
+3. For 'body_dynamic' pages, you MUST CHOOSE 'bodyA', 'bodyB', or 'bodyC' based on the context.
+4. AI reasoning for layout choice must be in the 'reasoning' field.
 
-**FOR PANEL (LANDSCAPE/PORTRAIT):**
-- **Panel Title (-1)**: Box is approx 373mm x 75mm (Landscape) / 770mm x 75mm (Portrait). Base: 140pt. **Limit: MUST summarize to fit in 1 line.**
-- **Panel Subtitle (0)**: Box is approx 373mm x 60mm (Landscape) / 770mm x 45mm (Portrait). Base: 90pt. **Limit: Max 2 lines.**
-- **Panel Intro (1)**: Box is approx 181mm x 115mm (Landscape) / 770mm x 74mm (Portrait). Base: 22pt. **Limit: Max 8-10 lines. Summarize content tightly.**
-- **Panel Section Subtitles (2, 4)**: Box is approx 181mm x 25mm. Base: 42pt. **Limit: MUST BE 1 LINE.**
-- **Panel Section Body (3, 5)**: Box is approx 181mm x 195mm (Landscape) / 181mm x 115mm (Portrait). Base: 22pt. **Limit: Max 15 lines. Remove fluff, use architectural keywords.**
-
-**FOR OTHER TEMPLATES:**
-- **Cover Title**: Box approx 1000mm x 200mm. Base 160pt. **Limit: Max 1 line.**
-- **Cover Subtitle**: Box approx 1000mm x 100mm. Base 60pt. **Limit: Max 2 lines. Summarize to fit.**
-- **Body A Intro/Details**: Box approx 107mm x 196mm (Side Column). Base 14pt. **Limit: Max 12 lines total. Summarize and organize input text to fit this narrow vertical box.**
-
-**CRITICAL RULE: DO NOT OVERFILL.** It is better to have slightly less text than too much. Your goal is to SUMMARIZE the input text so it fits beautifully in the designated area.
-- PAGE 1 MUST ALWAYS BE TYPE 'cover'.
-- PAGE 2 MUST ALWAYS BE TYPE 'toc'.
-- SUBSEQUENT PAGES SHOULD BE 'bodyA', 'bodyB', or 'bodyC'.
-
-Generate an array of exactly ${numPages} page objects. Each object must have:
-- title: A short title for the page.
-- text: An array of strings, exactly matching the required text count for that page type.
-
-Here are the required text counts and descriptions for each page:
-${pageStructures.map((p, i) => `Page ${i + 1} (${p.type}): ${p.textCount} text fields. ${p.description}`).join('\n')}
-
+Page List:
+${pageStructures.map((p, i) => `Page ${i+1}: ${p.type} (${p.description})`).join('\n')}
 `;
 
       const response = await ai.models.generateContent({
-        model: "gemini-3-flash-preview",
+        model: "gemini-1.5-flash-latest",
         contents: prompt,
         config: {
           responseMimeType: "application/json",
@@ -837,242 +803,130 @@ ${pageStructures.map((p, i) => `Page ${i + 1} (${p.type}): ${p.textCount} text f
             items: {
               type: Type.OBJECT,
               properties: {
+                layout: { type: Type.STRING },
                 title: { type: Type.STRING },
-                text: {
-                  type: Type.ARRAY,
-                  items: { type: Type.STRING }
-                }
+                text: { type: Type.ARRAY, items: { type: Type.STRING } },
+                reasoning: { type: Type.STRING }
               },
-              required: ["title", "text"]
+              required: ["layout", "title", "text", "reasoning"]
             }
           }
         }
       });
-
-      generatedContent = JSON.parse(response.text || "[]");
+      aiResponseRaw = JSON.parse(response.text || "[]");
     } catch (error) {
-      console.error("Error generating content with AI:", error);
-      // Fallback to basic text chunking if AI fails
-      let textChunks = textInput.split('\n\n').filter(t => t.trim().length > 0);
-      let textIdx = 0;
-      const getNextText = (count: number) => {
-        const res = [];
-        for (let i = 0; i < count; i++) {
-          res.push(textChunks.length > 0 ? textChunks[textIdx % textChunks.length] : 'Placeholder text');
-          textIdx++;
-        }
-        return res;
-      };
+      console.error("AI Generation Error:", error);
+    }
 
-      const topics = [
-        "Design Concept & Inspiration", "Material & Texture Analysis", "Spatial Configuration",
-        "Lighting & Atmosphere", "Structural Details", "User Experience Flow"
-      ];
-
-      generatedContent = pageStructures.map((p, i) => {
-        // [Phase 5] AI가 생성한 타이틀이 있으면 우선 사용 (특히 Report Cover)
-        let pageTitle = p.type === 'cover' ? currentTitle : p.type === 'toc' ? 'Contents' : topics[i % topics.length];
-
-        // AI JSON 응답에 해당 페이지의 개별 타이틀이 있으면 덮어씌움
-        if (generatedContent[i]?.title) {
-          pageTitle = generatedContent[i].title;
-        }
-
-        return {
-          title: pageTitle,
-          text: getNextText(p.textCount)
-        };
-      });
+    // AI가 응답을 생성하지 못한 경우를 대비한 최소한의 기본 구조 보장
+    if (aiResponseRaw.length === 0) {
+      aiResponseRaw = pageStructures.map((p, idx) => ({
+        layout: p.type === 'body_dynamic' ? 'bodyA' : p.type,
+        title: `Page ${idx + 1}`,
+        text: Array(p.textCount).fill('Generating content...'),
+        reasoning: 'AI fallback applied'
+      }));
     }
 
     let imgPool = [...analyzedImages];
-
     const getNextImagesIntelligently = (count: number, type: string) => {
       if (type === 'panel') {
         const result: string[] = [];
-        const dimsResult: { width: number, height: number }[] = [];
-        const tagsResult: string[] = [];
-        const titlesResult: string[] = [];
+        const dims: any[] = [];
+        const tags: string[] = [];
+        const titles: string[] = [];
+        let p = [...imgPool];
 
-        // ── 슬롯 정의 (TemplatePanel 기준) ──────────────────────────────
-        // images[0]   -> Slot_L  (Hero, 대형 1개)
-        // images[1~2] -> Slot_M  (Info, 중형 2개)
-        // images[3~9] -> Slot_S  (Support, 소형 7개)
-        const SLOT_L_COUNT = 1;
-        const SLOT_M_COUNT = 2;
-        const SLOT_S_COUNT = 7;
-        const TOTAL = SLOT_L_COUNT + SLOT_M_COUNT + SLOT_S_COUNT; // 10
-
-        const HERO_TAGS = ['[TAG: BEV]', '[TAG: FPV]', '[TAG: LAV]'];
-        const HERO_PRIORITY: Record<string, number> = { '[TAG: BEV]': 1, '[TAG: FPV]': 2, '[TAG: LAV]': 3 };
-        const MEDIUM_TAGS = ['[TAG: PLN]', '[TAG: ELV]'];
-        const SMALL_TAGS = ['[TAG: DIA]'];
-
-        let pool = [...imgPool];
-
-        // ── 1순위: Slot_L 채우기 (HeroImage 우선, 그다음 BEV > FPV > LAV) ──
-        const heroCandidates = pool.filter(i => HERO_TAGS.includes(i.tag));
-        heroCandidates.sort((a, b) => (HERO_PRIORITY[a.tag] ?? 99) - (HERO_PRIORITY[b.tag] ?? 99));
-
-        const heroInPool = pool.find(i => i.src === heroImage);
-        const heroSelected = heroInPool || heroCandidates[0] || pool[0] || null;
-
-        if (heroSelected) {
-          result.push(heroSelected.src); dimsResult.push(heroSelected.dim);
-          tagsResult.push(heroSelected.tag); titlesResult.push(heroSelected.title);
-          pool = pool.filter(i => i.src !== heroSelected.src);
+        // Slot L (1 Hero)
+        const hero = p.find(i => i.src === heroImage) || p[0];
+        if (hero) {
+          result.push(hero.src); dims.push(hero.dim); tags.push(hero.tag); titles.push(hero.title);
+          p = p.filter(i => i.src !== hero.src);
         }
-
-        // 1순위에서 탈락한 잉여 투시도 -> Slot_S 후보로 강등
-        const leftoverPerspectives = pool.filter(i => HERO_TAGS.includes(i.tag));
-        pool = pool.filter(i => !HERO_TAGS.includes(i.tag));
-
-        // ── 2순위: Slot_M 채우기 (PLN, ELV) - 파일명 번호 순 정렬 ────────
-        const medImgs = pool
-          .filter(i => MEDIUM_TAGS.includes(i.tag))
-          .sort((a, b) => {
-            const numA = parseInt((a.src.match(/\d+/) || ['0'])[0], 10);
-            const numB = parseInt((b.src.match(/\d+/) || ['0'])[0], 10);
-            return numA - numB;
-          })
-          .slice(0, SLOT_M_COUNT);
-
-        medImgs.forEach(it => {
-          result.push(it.src); dimsResult.push(it.dim);
-          tagsResult.push(it.tag); titlesResult.push(it.title);
-          pool = pool.filter(i => i.src !== it.src);
+        // Slot M (2)
+        const med = p.filter(i => ['[TAG: PLN]', '[TAG: ELV]'].includes(i.tag)).slice(0, 2);
+        med.forEach(i => {
+           result.push(i.src); dims.push(i.dim); tags.push(i.tag); titles.push(i.title);
+           p = p.filter(x => x.src !== i.src);
         });
-
-        // ── 3순위: Slot_S 채우기 (DIA + 잉여 투시도) ────────────────────
-        const diaImgs = pool.filter(i => SMALL_TAGS.includes(i.tag));
-        const slotSPool = [...diaImgs, ...leftoverPerspectives];
-
-        while (result.length < TOTAL) {
-          if (slotSPool.length > 0) {
-            const it = slotSPool.shift()!;
-            result.push(it.src); dimsResult.push(it.dim);
-            tagsResult.push(it.tag); titlesResult.push(it.title);
+        // Slot S (7)
+        while (result.length < 10) {
+          const s = p.shift();
+          if (s) {
+            result.push(s.src); dims.push(s.dim); tags.push(s.tag); titles.push(s.title);
           } else {
-            // Rule B (Underflow): 빈 슬롯 -> 흰 배경으로 처리
-            result.push(''); dimsResult.push({ width: 1, height: 1 });
-            tagsResult.push(''); titlesResult.push('');
+            result.push(''); dims.push({width:1, height:1}); tags.push(''); titles.push('');
           }
         }
-
-        // 전역 imgPool 업데이트
-        imgPool = pool.filter(i => !slotSPool.some(s => s.src === i.src));
-        if (imgPool.length === 0) imgPool = [...analyzedImages];
-
-        return { images: result, dims: dimsResult, tags: tagsResult, titles: titlesResult };
+        imgPool = p.length === 0 ? [...analyzedImages] : p;
+        return { images: result, dims, tags, titles };
       } else {
-        const result = [];
-        const dimsResult = [];
-        const tagsResult = [];
-        const titlesResult = [];
-        for (let i = 0; i < count; i++) {
-          const it = imgPool.shift() || analyzedImages[i % analyzedImages.length];
-          result.push(it?.src || '');
-          dimsResult.push(it?.dim || { width: 1, height: 1 });
-          tagsResult.push(it?.tag || '');
-          titlesResult.push(it?.title || '');
+        const res = { images: [] as string[], dims: [] as any[], tags: [] as string[], titles: [] as string[] };
+        for (let j = 0; j < count; j++) {
+          const it = imgPool.shift() || analyzedImages[j % analyzedImages.length];
+          res.images.push(it.src); res.dims.push(it.dim); res.tags.push(it.tag); res.titles.push(it.title);
         }
         if (imgPool.length === 0) imgPool = [...analyzedImages];
-        return { images: result, dims: dimsResult, tags: tagsResult, titles: titlesResult };
+        return res;
       }
     };
 
     const newPages: PageData[] = [];
-
     for (let i = 0; i < numPages; i++) {
-      const structure = pageStructures[i];
-      if (!structure) continue;
-      const aiContent = generatedContent[i] || { title: `Page ${i + 1}`, text: [] };
-
-      // Ensure text array has exactly the required length
-      const textArray = [...(aiContent.text || [])];
-      while (textArray.length < structure.textCount) textArray.push('');
-
-      let imgCount = 0;
-      if (structure.type === 'cover') imgCount = 1;
-      if (structure.type === 'toc') imgCount = 0;
-      if (structure.type === 'bodyA') imgCount = 1;
-      if (structure.type === 'bodyB') imgCount = 2;
-      if (structure.type === 'bodyC') imgCount = 3;
-      if (structure.type === 'drawing') imgCount = 1;
-      if (structure.type === 'panel') imgCount = 10;
-      if (structure.type === 'video') imgCount = 1;
-
-      const intelligentAllocation = getNextImagesIntelligently(imgCount, structure.type);
-      let pageImages = intelligentAllocation.images;
-      const imageDimensions = intelligentAllocation.dims || [];
-
-      // [Phase 11] 3D 영상 생성 기능 연동
-      if (structure.type === 'video' && analyzedImages.length >= 2) {
-        try {
-          const img1 = analyzedImages[0].src;
-          const img2 = analyzedImages[1].src;
-          // Replicate API 호출 (독립 모듈)
-          const videoUrl = await create_transition_video(img1, img2);
-          pageImages = [videoUrl]; // 첫 번째 슬롯에 영상 URL 할당
-        } catch (err) {
-          console.error("Video Generation Failed:", err);
-        }
+      const aiItem = aiResponseRaw[i] || {};
+      let layoutType = aiItem.layout || pageStructures[i]?.type || 'bodyA';
+      
+      // 'body_dynamic' 상태를 실제 렌더링 가능한 타입으로 최종 확정 (이미지 개수 기반)
+      if (layoutType === 'body_dynamic') {
+        const availableImgs = imgPool.length;
+        if (availableImgs >= 3) layoutType = 'bodyC';
+        else if (availableImgs === 2) layoutType = 'bodyB';
+        else layoutType = 'bodyA';
       }
+      
+      let imgCount = 1;
+      if (layoutType === 'bodyB') imgCount = 2;
+      else if (layoutType === 'bodyC') imgCount = 3;
+      else if (layoutType === 'panel') imgCount = 10;
+      else if (layoutType === 'toc') imgCount = 0;
 
-      const imageTags = intelligentAllocation.tags || [];
-      const imageTitles = intelligentAllocation.titles || [];
+      const allocation = getNextImagesIntelligently(imgCount, layoutType);
+      
+      let pageImages = allocation.images;
+      if (layoutType === 'video' && analyzedImages.length >= 2) {
+        try {
+          const videoUrl = await create_transition_video(analyzedImages[0].src, analyzedImages[1].src);
+          pageImages = [videoUrl];
+        } catch (e) { console.error(e); }
+      }
 
       newPages.push({
         id: `page-${i}`,
-        type: structure.type as any,
+        type: layoutType as any,
         content: {
-          title: (aiContent.title && aiContent.title !== `Page ${i + 1}`) ? aiContent.title : currentTitle,
-          text: textArray.slice(0, structure.textCount),
+          title: aiItem.title || currentTitle,
+          text: aiItem.text || [],
           images: pageImages,
-          imageDimensions,
-          imageTags,
-          imageTitles,
-          reasoning: structure.type === 'panel' ? heroReasoning : undefined
+          imageDimensions: allocation.dims,
+          imageTags: allocation.tags,
+          imageTitles: allocation.titles,
+          reasoning: layoutType === 'panel' ? heroReasoning : aiItem.reasoning
         }
       });
     }
 
     setGeneratedPages(newPages);
-
-    // --- 자동 라이브러리 업로드 로직 (Background Capture) ---
     setTimeout(async () => {
       if (!exportContainerRef.current) return;
-      await document.fonts.ready;
       const elements = Array.from(exportContainerRef.current.children);
       const snapshots: any[] = [];
-
       for (let i = 0; i < elements.length; i++) {
-        const el = elements[i] as HTMLElement;
         try {
-          // 저해상도로 템플릿 포착
-          const canvas = await html2canvas(el, {
-            scale: 0.25,
-            useCORS: true,
-            logging: false,
-            backgroundColor: '#ffffff',
-            scrollY: -window.scrollY,
-            scrollX: 0
-          });
-          const dataUrl = canvas.toDataURL('image/jpeg', 0.8);
-          snapshots.push({
-            src: dataUrl,
-            type: 'GENERATED_TMPL',
-            dim: { x: canvas.width, y: canvas.height },
-            title: `Generated_Page_${i + 1}`,
-            tag: '[TAG: DIA]'
-          });
-        } catch (e) {
-          console.error("Thumbnail capture failed:", e);
-        }
+          const canvas = await html2canvas(elements[i] as HTMLElement, { scale: 0.25, useCORS: true });
+          snapshots.push({ src: canvas.toDataURL('image/jpeg', 0.8), type: 'GENERATED_TMPL', dim: { x: canvas.width, y: canvas.height }, title: `Generated_Page_${i + 1}`, tag: '[TAG: DIA]' });
+        } catch (e) { console.error(e); }
       }
-      if (snapshots.length > 0) {
-        setHistoryImages(prev => [...snapshots, ...prev]);
-      }
+      if (snapshots.length > 0) setHistoryImages(prev => [...snapshots, ...prev]);
     }, 2000);
 
     setCurrentPageIndex(0);
@@ -1377,10 +1231,10 @@ ${pageStructures.map((p, i) => `Page ${i + 1} (${p.type}): ${p.textCount} text f
 
         {/* Library Pop-up Panel */}
         <div className={cn(
-          "absolute left-[80px] top-1/2 -translate-y-1/2 bg-[#fdfdfd] border border-gray-200 rounded-2xl shadow-[0_15px_40px_rgba(0,0,0,0.12)] flex flex-col pt-6 pb-4 px-5 transition-all duration-400 ease-[cubic-bezier(0.16,1,0.3,1)] z-30 origin-left",
-          isTablet ? "w-[280px]" : "w-[340px]",
-          isTablet ? "max-h-[70vh]" : "max-h-[80vh]",
-          isLibraryOpen ? "opacity-100 scale-100 translate-x-0" : "opacity-0 scale-95 -translate-x-4 pointer-events-none"
+          "bg-[#fdfdfd] border-r border-gray-200 shadow-[10px_0_30px_rgba(0,0,0,0.05)] flex flex-col pt-6 pb-4 px-5 transition-all duration-400 ease-[cubic-bezier(0.16,1,0.3,1)] z-30 origin-left overflow-hidden",
+          (isTablet || isMobile) 
+            ? (isLibraryOpen ? "w-[280px] opacity-100" : "w-0 opacity-0 overflow-hidden border-none p-0") 
+            : (isLibraryOpen ? "absolute left-[80px] top-1/2 -translate-y-1/2 w-[340px] max-h-[80vh] opacity-100 scale-100 translate-x-0 rounded-2xl shadow-[0_15px_40px_rgba(0,0,0,0.12)] border-gray-200" : "absolute left-[80px] top-1/2 -translate-y-1/2 w-[340px] max-h-[80vh] opacity-0 scale-95 -translate-x-4 pointer-events-none")
         )}>
           <div className="flex justify-between items-center mb-6 px-1">
             <h2 className="text-[13px] font-black tracking-widest text-black">LIBRARY</h2>
@@ -1505,7 +1359,7 @@ ${pageStructures.map((p, i) => `Page ${i + 1} (${p.type}): ${p.textCount} text f
         <div className="flex-1 flex flex-col relative overflow-hidden h-full">
           <div
             ref={canvasAreaRef}
-            className="flex-1 overflow-hidden flex items-center justify-center p-8 bg-[#f5f5f5]"
+            className="flex-1 overflow-hidden flex items-center justify-center p-4 sm:p-8 bg-[#f5f5f5]"
           >
             {purpose === 'video' ? (
               <MediaViewer images={selectedImages.length > 0 ? selectedImages : (images.length > 0 ? [images[0]] : [])} mode={purpose} />
@@ -1642,7 +1496,7 @@ ${pageStructures.map((p, i) => `Page ${i + 1} (${p.type}): ${p.textCount} text f
         )}>
           <div className="p-6 flex flex-col gap-8">
             <div className="flex justify-between items-center border-b border-gray-100 pb-3">
-              <span className="font-black text-base tracking-tight text-black uppercase">No11. print</span>
+              <span className="font-black text-base tracking-tight text-black uppercase">writer protocol</span>
             </div>
 
             {/* AI 텍스트 자동생성 (Moved to top as requested) */}

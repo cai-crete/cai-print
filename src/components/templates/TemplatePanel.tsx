@@ -45,9 +45,6 @@ export function TemplatePanel({ page, orientation, onTextSelection }: { page: Pa
                 }}>
                 <div className="bg-gray-100 relative group overflow-hidden" style={{ gridColumn: '1 / 3', gridRow: '1 / 6' }}>
                     {heroImg && <DraggableImage pageId={page.id} imageIndex={0} src={heroImg.src} />}
-                    {page.content.reasoning && (
-                        <div className="absolute top-[8mm] left-[8mm] bg-white/95 px-[6mm] py-[4mm] font-medium text-gray-800 shadow-xl border-l-[4px] border-black opacity-0 group-hover:opacity-100 transition-opacity" style={{ fontSize: '19pt' }}>{page.content.reasoning}</div>
-                    )}
                 </div>
 
                 <div className="text-cell overflow-hidden flex flex-col" style={{ gridColumn: '3 / 5', gridRow: '1' }}>

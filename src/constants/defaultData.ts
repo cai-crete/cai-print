@@ -3,8 +3,6 @@
 export const DEFAULT_IMAGES = [
     { src: "/image library/Elevation -1.png", type: "Elevation" },
     { src: "/image library/Elevation -2.png", type: "Elevation" },
-    { src: "/image library/Elevation -3.png", type: "Elevation" },
-    { src: "/image library/Elevation -4.png", type: "Elevation" },
     { src: "/image library/bird's eye view -1.png", type: "bird's eye view" },
     { src: "/image library/diagram -1.jpg", type: "diagram" },
     { src: "/image library/diagram -2.jpg", type: "diagram" },
