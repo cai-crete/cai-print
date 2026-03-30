@@ -411,7 +411,6 @@ export default function App() {
         drawing: '도면/사양서 (Drawing & Specification) — 기술적 설명 중심',
         panel: '전시 패널 (Panel) — 감성적·공간적 설명 중심, A0 대형 판넬',
         video: '영상 스크립트 (Video) — 내레이션 스타일',
-        image: '이미지 캡션 (Image) — 간결한 시각적 설명',
       };
       const purposeDescription = purposeLabel[currentPurposeForPrompt] || currentPurposeForPrompt;
       const promptText = `당신은 'AI CANVAS' 시스템 내의 지능형 콘텐츠 생성 모듈입니다.
@@ -585,7 +584,61 @@ export default function App() {
 
     setIsGenerating(true);
 
-    let sourceImagesRaw = selectedImages.length > 0 ? selectedImages : (images.length > 0 ? [images[0].src] : []);
+    // --- Dynamic Hero Selection Logic (Moved up for auto-selection) ---
+    let targetTags: string[] = [];
+    let reasoningTemplate = '';
+    if (resolvedProjectType === '주거') {
+      targetTags = ['[TAG: FPV]', '[TAG: LAV]'];
+      reasoningTemplate = '빛과 질감이 잘 표현되고 거주자의 공간감이 돋보이는 렌더링 컷 우선 배치를 통해 기획 의도를 강조했습니다.';
+    } else if (resolvedProjectType === '상업') {
+      targetTags = ['[TAG: BEV]', '[TAG: FPV]'];
+      reasoningTemplate = '파사드 디자인, 건물의 형태적 특징, 주변 맥락과의 조화가 극적으로 드러난 컷 우선 배치를 통해 기획 의도를 강조했습니다.';
+    } else if (resolvedProjectType === '공공') {
+      targetTags = ['[TAG: PLN]', '[TAG: DIA]'];
+      reasoningTemplate = '공공건축의 핵심인 1층의 접근성, 광장과의 연계, 대중의 동선 흐름을 가장 명확하게 보여주는 정보 우선 배치를 통해 기획 의도를 강조했습니다.';
+    } else if (resolvedProjectType === '복합시설') {
+      targetTags = ['[TAG: ELV]', '[TAG: DIA]'];
+      reasoningTemplate = '서로 다른 프로그램이 수직/수평으로 어떻게 결합하는지 직관적으로 보여주는 도면 우선 배치를 통해 기획 의도를 강조했습니다.';
+    } else {
+      targetTags = ['[TAG: BEV]', '[TAG: FPV]']; // Default fallback
+      reasoningTemplate = '프로젝트의 전체적인 이미지를 잘 보여주는 투시도를 우선 배치하였습니다.';
+    }
+
+    let sourceImagesRaw = [...selectedImages];
+
+    // 자동 이미지 선택 로직: 선택된 이미지가 없을 경우 라이브러리에서 최적의 이미지 추출
+    if (sourceImagesRaw.length === 0 && images.length > 0) {
+      const allScored = await Promise.all(images.map(async (libImg) => {
+        const img = libImg.src;
+        const dim = await getImageDimensions(img);
+        const fileName = decodeURIComponent(img.split('/').pop() || '').toLowerCase();
+        let tag = '[TAG: DIA]';
+        if (fileName.includes('bird') || fileName.includes("bird's eye") || fileName.includes('birdseye') || fileName.includes('조감도')) tag = '[TAG: BEV]';
+        else if (fileName.includes('front') || fileName.includes('perspective') || fileName.includes('투시도') || fileName.includes('정면')) tag = '[TAG: FPV]';
+        else if (fileName.includes('low') || fileName.includes('low angle') || fileName.includes('로우앵글')) tag = '[TAG: LAV]';
+        else if (fileName.includes('plan') || fileName.includes('floor') || fileName.includes('floorplan') || fileName.includes('평면도')) tag = '[TAG: PLN]';
+        else if (fileName.includes('elevation') || fileName.includes('입면도') || fileName.includes('남측') || fileName.includes('북측') || fileName.includes('동측') || fileName.includes('서측')) tag = '[TAG: ELV]';
+        
+        let score = 20;
+        if (targetTags.includes(tag)) score = 100;
+        else if (['[TAG: BEV]', '[TAG: FPV]', '[TAG: LAV]'].includes(tag)) score = 80;
+        else if (['[TAG: PLN]', '[TAG: ELV]'].includes(tag)) score = 60;
+        
+        return { src: img, score };
+      }));
+      
+      allScored.sort((a, b) => b.score - a.score);
+      
+      let countToSelect = 8;
+      if (currentPurpose === 'panel') countToSelect = 10;
+      else if (currentPurpose === 'video') countToSelect = 2;
+      
+      const autoSelected = allScored.slice(0, countToSelect).map(i => i.src);
+      setSelectedImages(autoSelected);
+      sourceImagesRaw = autoSelected;
+    } else if (sourceImagesRaw.length === 0) {
+      sourceImagesRaw = images.length > 0 ? [images[0].src] : [];
+    }
 
     // AI Heuristics: Analyze and Score Images (Tag Assignment)
     const analyzedImages = await Promise.all(sourceImagesRaw.map(async (img) => {
@@ -631,28 +684,6 @@ export default function App() {
       return { src: img, score, priority, dim, tag: internalTag, title };
     }));
 
-    // --- Dynamic Hero Selection Logic (v1.1) ---
-    // Rule mapping based on projectType
-    let targetTags: string[] = [];
-    let reasoningTemplate = '';
-
-    if (resolvedProjectType === '주거') {
-      targetTags = ['[TAG: FPV]', '[TAG: LAV]'];
-      reasoningTemplate = '빛과 질감이 잘 표현되고 거주자의 공간감이 돋보이는 렌더링 컷 우선 배치를 통해 기획 의도를 강조했습니다.';
-    } else if (resolvedProjectType === '상업') {
-      targetTags = ['[TAG: BEV]', '[TAG: FPV]'];
-      reasoningTemplate = '파사드 디자인, 건물의 형태적 특징, 주변 맥락과의 조화가 극적으로 드러난 컷 우선 배치를 통해 기획 의도를 강조했습니다.';
-    } else if (resolvedProjectType === '공공') {
-      targetTags = ['[TAG: PLN]', '[TAG: DIA]'];
-      reasoningTemplate = '공공건축의 핵심인 1층의 접근성, 광장과의 연계, 대중의 동선 흐름을 가장 명확하게 보여주는 정보 우선 배치를 통해 기획 의도를 강조했습니다.';
-    } else if (resolvedProjectType === '복합시설') {
-      targetTags = ['[TAG: ELV]', '[TAG: DIA]'];
-      reasoningTemplate = '서로 다른 프로그램이 수직/수평으로 어떻게 결합하는지 직관적으로 보여주는 도면 우선 배치를 통해 기획 의도를 강조했습니다.';
-    } else {
-      targetTags = ['[TAG: BEV]', '[TAG: FPV]']; // Default fallback
-      reasoningTemplate = '프로젝트의 전체적인 이미지를 잘 보여주는 투시도를 우선 배치하였습니다.';
-    }
-
     // Boost the score (override priority) for images matching the target tags
     let heroAssigned = false;
     let heroReasoning = '';
@@ -687,11 +718,6 @@ export default function App() {
         pageStructures.push({ type: 'panel', textCount: 13, description: "Panel page. text[0]: Subtitle, text[1]: Main description, text[2]: Left section title, text[3]: Left section description, text[4]: Right section title, text[5]: Right section description. text[6] to text[12]: Short captions for up to 7 images." });
       } else if (currentPurpose === 'video') {
         pageStructures.push({ type: 'video', textCount: 1, description: "Video storyboard page. text[0]: Scene description." });
-      } else if (currentPurpose === 'image') {
-        // [Phase 10] 이미지 목적 시 선택된 이미지 개수만큼 페이지 생성
-        sourceImagesRaw.forEach((_, imgIdx) => {
-          pageStructures.push({ type: 'image', textCount: 1, description: `Image page ${imgIdx + 1}. text[0]: Image caption.` });
-        });
       } else if (currentPurpose === 'report') {
         if (i === 0) {
           pageStructures.push({ type: 'cover', textCount: 1, description: "Cover page. text[0]: A catchy subtitle or brief description (1-2 sentences)." });
@@ -734,20 +760,23 @@ ${currentTextInput || "No input provided. Please generate generic, professional 
 2. IF THE INPUT TEXT IS TOO LONG, AUTOMATICALLY **SUMMARIZE AND CONDENSE** IT INTO A NATURAL, WELL-STRUCTURED VERSION.
 3. **DO NOT USE ELLIPSIS (...)** OR TRUNCATE THE TEXT. OUTPUT MUST BE COMPLETE AND COHERENT.
 4. GENERATE THE CONTENT IN THE SAME LANGUAGE AS THE USER'S INPUT (DEFAULT TO KOREAN).
-5. **STRICTLY ADHERE TO THE FOLLOWING CHARACTER LIMITS PER FIELD TYPE (Korean character count):**
-   - **Panel - title (대제목)**: max 12 chars (1 line)
-   - **Panel - text[0] (소제목)**: max 28 chars (1 line)
-   - **Panel - text[1] (메인 설명)**: max 280 chars (~9 lines at 26pt)
-   - **Panel - text[2,4] (섹션 소제목)**: max 20 chars each
-   - **Panel - text[3,5] (섹션 상세설명)**: max 460 chars each (~15 lines at 19pt)
-   - **Cover - title**: max 12 chars (must be concise project name)
-   - **Cover - text[0] (부제목)**: max 45 chars
-   - **Body A - text[0]**: max 580 chars (~12 lines at 12pt)
-   - **Body A - text[1]**: max 780 chars (~16 lines at 10.5pt)
-   - **Body B/C - text[0] (Process 도입글)**: max 180 chars
-   - **Body B/C - image caption**: max 110 chars each
+**STRICTLY ADHERE TO THE FOLLOWING PHYSICAL BOUNDARY CONSTRAINTS (mm) AND BASE FONT SIZES (pt):**
+The system has a 'Dynamic Fit' capability that shrinks font size if text overflows, but you MUST aim for the ideal length based on the dimensions below.
 
-**FOR REPORT PURPOSE:**
+**FOR PANEL (LANDSCAPE/PORTRAIT):**
+- **Panel Title (-1)**: Box is approx 373mm x 75mm (Landscape) / 770mm x 75mm (Portrait). Base: 140pt. **Limit: Max 12 chars (1 line).**
+- **Panel Subtitle (0)**: Box is approx 373mm x 60mm (Landscape) / 770mm x 45mm (Portrait). Base: 90pt. **Limit: Max 30 chars (1-2 lines).**
+- **Panel Intro (1)**: Box is approx 181mm x 115mm (Landscape) / 770mm x 74mm (Portrait). Base: 22pt. **Limit: Max 280 chars (~8-10 lines).**
+- **Panel Section Subtitles (2, 4)**: Box is approx 181mm x 25mm. Base: 42pt. **Limit: Max 15 chars (MUST BE 1 LINE).**
+- **Panel Section Body (3, 5)**: Box is approx 181mm x 195mm (Landscape) / 181mm x 115mm (Portrait). Base: 22pt. **Limit: Max 480 chars (~15-18 lines).**
+
+**FOR OTHER TEMPLATES:**
+- **Cover Title**: Box approx 1000mm x 200mm. Base 160pt. Max 12 chars.
+- **Cover Subtitle**: Box approx 1000mm x 100mm. Base 60pt. Max 45 chars.
+- **Body A Intro**: Box approx 1000mm x 300mm. Base 14pt. Max 600 chars.
+- **Body A Details**: Box approx 1000mm x 400mm. Base 11pt. Max 800 chars.
+
+**CRITICAL RULE: DO NOT OVERFILL.** It is better to have slightly less text than too much.
 - PAGE 1 MUST ALWAYS BE TYPE 'cover'.
 - PAGE 2 MUST ALWAYS BE TYPE 'toc'.
 - SUBSEQUENT PAGES SHOULD BE 'bodyA', 'bodyB', or 'bodyC'.
@@ -935,7 +964,6 @@ ${pageStructures.map((p, i) => `Page ${i + 1} (${p.type}): ${p.textCount} text f
       if (structure.type === 'drawing') imgCount = 1;
       if (structure.type === 'panel') imgCount = 10;
       if (structure.type === 'video') imgCount = 1;
-      if (structure.type === 'image') imgCount = 1;
 
       const intelligentAllocation = getNextImagesIntelligently(imgCount, structure.type);
       let pageImages = intelligentAllocation.images;
@@ -944,8 +972,8 @@ ${pageStructures.map((p, i) => `Page ${i + 1} (${p.type}): ${p.textCount} text f
       // [Phase 11] 3D 영상 생성 기능 연동
       if (structure.type === 'video' && analyzedImages.length >= 2) {
         try {
-          const img1 = analyzedImages[0].img;
-          const img2 = analyzedImages[1].img;
+          const img1 = analyzedImages[0].src;
+          const img2 = analyzedImages[1].src;
           // Replicate API 호출 (독립 모듈)
           const videoUrl = await create_transition_video(img1, img2);
           pageImages = [videoUrl]; // 첫 번째 슬롯에 영상 URL 할당
@@ -1451,12 +1479,10 @@ ${pageStructures.map((p, i) => `Page ${i + 1} (${p.type}): ${p.textCount} text f
               if (isPanel) {
                 mmW = isPortrait ? 841 : 1189; // A0 가로형: 1189x841, 세로형: 841x1189
                 mmH = isPortrait ? 1189 : 841;
-              } else if (currentPage.type === 'drawing' || currentPage.type === 'report' || ['cover', 'toc', 'bodyA', 'bodyB', 'bodyC'].includes(currentPage.type)) {
+              } else if (['drawing', 'panel', 'cover', 'toc', 'bodyA', 'bodyB', 'bodyC'].includes(currentPage.type)) {
                 mmW = 420; mmH = 297; // A3 가로
               } else if (currentPage.type === 'video') {
                 mmW = 1920; mmH = 1080; // 픽셀 단위 예외
-              } else if (currentPage.type === 'image') {
-                mmW = 1080; mmH = 1080;
               } else {
                 mmW = 420; mmH = 297;
               }
@@ -1841,17 +1867,6 @@ function PageRenderer({ page, purpose, orientation, pageIndex, onTextMouseUp, al
     mmH = isPortrait ? 1189 : 841;
   } else if (page.type === 'video') {
     mmW = 1920; mmH = 1080; // 픽셀 단위 예외
-  } else if (page.type === 'image') {
-    // [Phase 10] 이미지 원본 비율 반영
-    // imageDimensions가 있으면 그 비율을 사용, 없으면 1:1 (1080x1080)
-    const dim = page.content.imageDimensions?.[0];
-    if (dim && dim.width > 0 && dim.height > 0) {
-      // 픽셀 단위를 mm로 환산하지 않고, 비율 유지를 위해 기준 너비(420mm)에서 높이를 계산
-      mmW = 420;
-      mmH = 420 * (dim.height / dim.width);
-    } else {
-      mmW = 1080; mmH = 1080; // 픽셀 단위 fallback
-    }
   } else {
     // 보고서_Template_v7.html: --page-w: 420mm; --page-h: 297mm
     mmW = 420; mmH = 297; // A3 가로
@@ -1879,7 +1894,6 @@ function PageRenderer({ page, purpose, orientation, pageIndex, onTextMouseUp, al
       {page.type === 'panel' && <TemplatePanel page={page} orientation={orientation} onTextMouseUp={onTextMouseUp} />}
       {page.type === 'drawing' && <TemplateDrawing page={page} onTextMouseUp={onTextMouseUp} tocLabel={tocLabel} />}
       {page.type === 'video' && <TemplateVideo page={page} onTextMouseUp={onTextMouseUp} />}
-      {page.type === 'image' && <TemplateImage page={page} onTextMouseUp={onTextMouseUp} />}
     </div>
   );
 }

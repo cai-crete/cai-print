@@ -11,7 +11,29 @@ export function TemplatePanel({ page, orientation, onTextMouseUp }: { page: Page
     const heroImg = images[0] ? { src: images[0], tag: tags[0], title: titles[0] } : null;
     const subImgs = images.slice(1).map((src, i) => ({ src, tag: tags[i + 1], title: titles[i + 1] }));
 
-    const textDeps = [page.content.text, page.id];
+    // Refs for Auto-fit
+    const titleRef = useRef<HTMLDivElement>(null);
+    const text0Ref = useRef<HTMLDivElement>(null);
+    const text1Ref = useRef<HTMLDivElement>(null);
+    const text2Ref = useRef<HTMLDivElement>(null);
+    const text3Ref = useRef<HTMLDivElement>(null);
+    const text4Ref = useRef<HTMLDivElement>(null);
+    const text5Ref = useRef<HTMLDivElement>(null);
+
+    const textDeps = [page.content.text, page.content.title, orientation, page.id];
+    
+    const getBaseSize = (index: number, def: number) => {
+        const style = getTextStyle(page.content.textStyles, index);
+        return style.fontSize ? parseFloat(style.fontSize) : def;
+    };
+
+    useAutoFitText(titleRef, undefined, { deps: textDeps, baseFontSize: getBaseSize(-1, 140) });
+    useAutoFitText(text0Ref, undefined, { deps: textDeps, baseFontSize: getBaseSize(0, 90) });
+    useAutoFitText(text1Ref, undefined, { deps: textDeps, baseFontSize: getBaseSize(1, 22) });
+    useAutoFitText(text2Ref, undefined, { deps: textDeps, baseFontSize: getBaseSize(2, 42) });
+    useAutoFitText(text3Ref, undefined, { deps: textDeps, baseFontSize: getBaseSize(3, 22) });
+    useAutoFitText(text4Ref, undefined, { deps: textDeps, baseFontSize: getBaseSize(4, 42) });
+    useAutoFitText(text5Ref, undefined, { deps: textDeps, baseFontSize: getBaseSize(5, 22) });
 
     if (orientation === 'landscape') {
         return (
@@ -30,6 +52,7 @@ export function TemplatePanel({ page, orientation, onTextMouseUp }: { page: Page
 
                 <div className="text-cell overflow-hidden flex flex-col" style={{ gridColumn: '3 / 5', gridRow: '1' }}>
                     <div
+                        ref={titleRef}
                         onMouseUp={() => onTextMouseUp?.(page.id, -1)}
                         data-text-index="-1"
                         className="font-black text-black leading-[1.0] tracking-[-4px] whitespace-nowrap"
@@ -40,6 +63,7 @@ export function TemplatePanel({ page, orientation, onTextMouseUp }: { page: Page
                 </div>
                 <div className="text-cell overflow-hidden flex flex-col" style={{ gridColumn: '3 / 5', gridRow: '2' }}>
                     <div
+                        ref={text0Ref}
                         onMouseUp={() => onTextMouseUp?.(page.id, 0)}
                         data-text-index="0"
                         className="font-medium text-gray-500 leading-[1.1]"
@@ -49,47 +73,62 @@ export function TemplatePanel({ page, orientation, onTextMouseUp }: { page: Page
                     </div>
                 </div>
 
-                <div
-                    onMouseUp={() => onTextMouseUp?.(page.id, 1)}
-                    data-text-index="1"
-                    className="font-extralight text-gray-700 leading-[1.6] overflow-hidden"
-                    style={{ gridColumn: '3 / 5', gridRow: '3', fontSize: '22pt', alignSelf: 'stretch', ...getTextStyle(page.content.textStyles, 1) }}
-                >
-                    {page.content.text[1]}
+                <div className="text-cell overflow-hidden" style={{ gridColumn: '3 / 5', gridRow: '3' }}>
+                    <div
+                        ref={text1Ref}
+                        onMouseUp={() => onTextMouseUp?.(page.id, 1)}
+                        data-text-index="1"
+                        className="font-extralight text-gray-700 leading-[1.6] h-full"
+                        style={{ fontSize: '22pt', alignSelf: 'stretch', ...getTextStyle(page.content.textStyles, 1) }}
+                    >
+                        {page.content.text[1]}
+                    </div>
                 </div>
 
-                <div
-                    onMouseUp={() => onTextMouseUp?.(page.id, 2)}
-                    data-text-index="2"
-                    className="font-medium text-black"
-                    style={{ gridColumn: '3 / 4', gridRow: '4', fontSize: '42pt', alignSelf: 'start', ...getTextStyle(page.content.textStyles, 2) }}
-                >
-                    {page.content.text[2] || '소제목 A'}
+                <div className="text-cell overflow-hidden" style={{ gridColumn: '3 / 4', gridRow: '4' }}>
+                    <div
+                        ref={text2Ref}
+                        onMouseUp={() => onTextMouseUp?.(page.id, 2)}
+                        data-text-index="2"
+                        className="font-medium text-black h-full"
+                        style={{ fontSize: '42pt', alignSelf: 'start', ...getTextStyle(page.content.textStyles, 2) }}
+                    >
+                        {page.content.text[2] || '소제목 A'}
+                    </div>
                 </div>
-                <div
-                    onMouseUp={() => onTextMouseUp?.(page.id, 4)}
-                    data-text-index="4"
-                    className="font-medium text-black"
-                    style={{ gridColumn: '4 / 5', gridRow: '4', fontSize: '42pt', alignSelf: 'start', ...getTextStyle(page.content.textStyles, 4) }}
-                >
-                    {page.content.text[4] || '소제목 B'}
+                <div className="text-cell overflow-hidden" style={{ gridColumn: '4 / 5', gridRow: '4' }}>
+                    <div
+                        ref={text4Ref}
+                        onMouseUp={() => onTextMouseUp?.(page.id, 4)}
+                        data-text-index="4"
+                        className="font-medium text-black h-full"
+                        style={{ fontSize: '42pt', alignSelf: 'start', ...getTextStyle(page.content.textStyles, 4) }}
+                    >
+                        {page.content.text[4] || '소제목 B'}
+                    </div>
                 </div>
 
-                <div
-                    onMouseUp={() => onTextMouseUp?.(page.id, 3)}
-                    data-text-index="3"
-                    className="font-extralight text-gray-600 leading-[1.6] overflow-hidden"
-                    style={{ gridColumn: '3 / 4', gridRow: '5', fontSize: '22pt', alignSelf: 'stretch', ...getTextStyle(page.content.textStyles, 3) }}
-                >
-                    {page.content.text[3]}
+                <div className="text-cell overflow-hidden" style={{ gridColumn: '3 / 4', gridRow: '5' }}>
+                    <div
+                        ref={text3Ref}
+                        onMouseUp={() => onTextMouseUp?.(page.id, 3)}
+                        data-text-index="3"
+                        className="font-extralight text-gray-600 leading-[1.6] h-full"
+                        style={{ fontSize: '22pt', alignSelf: 'stretch', ...getTextStyle(page.content.textStyles, 3) }}
+                    >
+                        {page.content.text[3]}
+                    </div>
                 </div>
-                <div
-                    onMouseUp={() => onTextMouseUp?.(page.id, 5)}
-                    data-text-index="5"
-                    className="font-extralight text-gray-600 leading-[1.6] overflow-hidden"
-                    style={{ gridColumn: '4 / 5', gridRow: '5', fontSize: '22pt', alignSelf: 'stretch', ...getTextStyle(page.content.textStyles, 5) }}
-                >
-                    {page.content.text[5]}
+                <div className="text-cell overflow-hidden" style={{ gridColumn: '4 / 5', gridRow: '5' }}>
+                    <div
+                        ref={text5Ref}
+                        onMouseUp={() => onTextMouseUp?.(page.id, 5)}
+                        data-text-index="5"
+                        className="font-extralight text-gray-600 leading-[1.6] h-full"
+                        style={{ fontSize: '22pt', alignSelf: 'stretch', ...getTextStyle(page.content.textStyles, 5) }}
+                    >
+                        {page.content.text[5]}
+                    </div>
                 </div>
 
                 <div className="bg-gray-100 overflow-hidden" style={{ gridColumn: '3', gridRow: '6' }}>{subImgs[0] && <DraggableImage pageId={page.id} imageIndex={1} src={subImgs[0].src} />}</div>
@@ -100,6 +139,7 @@ export function TemplatePanel({ page, orientation, onTextMouseUp }: { page: Page
         );
     }
 
+    // Portrait Mode
     return (
         <div className="w-full h-full bg-white relative font-['S-Core_Dream'] text-justify"
             style={{
@@ -109,6 +149,7 @@ export function TemplatePanel({ page, orientation, onTextMouseUp }: { page: Page
             }}>
             <div className="text-cell overflow-hidden flex flex-col" style={{ gridColumn: '1 / 5', gridRow: '1' }}>
                 <div
+                    ref={titleRef}
                     onMouseUp={() => onTextMouseUp?.(page.id, -1)}
                     data-text-index="-1"
                     className="font-black text-black leading-[1.0] tracking-[-4px] whitespace-nowrap"
@@ -119,6 +160,7 @@ export function TemplatePanel({ page, orientation, onTextMouseUp }: { page: Page
             </div>
             <div className="text-cell overflow-hidden flex flex-col" style={{ gridColumn: '1 / 5', gridRow: '2' }}>
                 <div
+                    ref={text0Ref}
                     onMouseUp={() => onTextMouseUp?.(page.id, 0)}
                     data-text-index="0"
                     className="font-medium text-gray-500 leading-[1.1]"
@@ -128,12 +170,12 @@ export function TemplatePanel({ page, orientation, onTextMouseUp }: { page: Page
                 </div>
             </div>
 
-            {/* text[1]: 메인 설명 — 22pt 강제 고정 */}
-            <div className="overflow-hidden" style={{ gridColumn: '1 / 5', gridRow: '3' }}>
+            <div className="text-cell overflow-hidden" style={{ gridColumn: '1 / 5', gridRow: '3' }}>
                 <div
+                    ref={text1Ref}
                     onMouseUp={() => onTextMouseUp?.(page.id, 1)}
                     data-text-index="1"
-                    className="font-extralight text-gray-700 leading-[1.6]"
+                    className="font-extralight text-gray-700 leading-[1.6] h-full"
                     style={{ fontSize: '22pt', wordBreak: 'keep-all', overflowWrap: 'break-word', ...getTextStyle(page.content.textStyles, 1) }}
                 >
                     {page.content.text[1]}
@@ -142,42 +184,48 @@ export function TemplatePanel({ page, orientation, onTextMouseUp }: { page: Page
 
             <div className="bg-gray-100 overflow-hidden" style={{ gridColumn: '1 / 4', gridRow: '4 / 8' }}>{heroImg && <DraggableImage pageId={page.id} imageIndex={0} src={heroImg.src} />}</div>
 
-            <div
-                onMouseUp={() => onTextMouseUp?.(page.id, 2)}
-                data-text-index="2"
-                className="font-medium text-black"
-                style={{ gridColumn: '4', gridRow: '4', fontSize: '42pt', alignSelf: 'start', ...getTextStyle(page.content.textStyles, 2) }}
-            >
-                {page.content.text[2] || '소제목 A'}
+            <div className="text-cell overflow-hidden" style={{ gridColumn: '4', gridRow: '4' }}>
+                <div
+                    ref={text2Ref}
+                    onMouseUp={() => onTextMouseUp?.(page.id, 2)}
+                    data-text-index="2"
+                    className="font-medium text-black h-full"
+                    style={{ fontSize: '42pt', alignSelf: 'start', ...getTextStyle(page.content.textStyles, 2) }}
+                >
+                    {page.content.text[2] || '소제목 A'}
+                </div>
             </div>
 
-            {/* text[3]: 섹션 A 상세설명 — 22pt 강제 고정 */}
-            <div className="overflow-hidden" style={{ gridColumn: '4', gridRow: '5' }}>
+            <div className="text-cell overflow-hidden" style={{ gridColumn: '4', gridRow: '5' }}>
                 <div
+                    ref={text3Ref}
                     onMouseUp={() => onTextMouseUp?.(page.id, 3)}
                     data-text-index="3"
-                    className="font-extralight text-gray-600 leading-[1.6]"
+                    className="font-extralight text-gray-600 leading-[1.6] h-full"
                     style={{ fontSize: '22pt', wordBreak: 'keep-all', overflowWrap: 'break-word', ...getTextStyle(page.content.textStyles, 3) }}
                 >
                     {page.content.text[3]}
                 </div>
             </div>
 
-            <div
-                onMouseUp={() => onTextMouseUp?.(page.id, 4)}
-                data-text-index="4"
-                className="font-medium text-black"
-                style={{ gridColumn: '4', gridRow: '6', fontSize: '42pt', alignSelf: 'start', ...getTextStyle(page.content.textStyles, 4) }}
-            >
-                {page.content.text[4] || '소제목 B'}
+            <div className="text-cell overflow-hidden" style={{ gridColumn: '4', gridRow: '6' }}>
+                <div
+                    ref={text4Ref}
+                    onMouseUp={() => onTextMouseUp?.(page.id, 4)}
+                    data-text-index="4"
+                    className="font-medium text-black h-full"
+                    style={{ fontSize: '42pt', alignSelf: 'start', ...getTextStyle(page.content.textStyles, 4) }}
+                >
+                    {page.content.text[4] || '소제목 B'}
+                </div>
             </div>
 
-            {/* text[5]: 섹션 B 상세설명 — 22pt 강제 고정 */}
-            <div className="overflow-hidden" style={{ gridColumn: '4', gridRow: '7' }}>
+            <div className="text-cell overflow-hidden" style={{ gridColumn: '4', gridRow: '7' }}>
                 <div
+                    ref={text5Ref}
                     onMouseUp={() => onTextMouseUp?.(page.id, 5)}
                     data-text-index="5"
-                    className="font-extralight text-gray-600 leading-[1.6]"
+                    className="font-extralight text-gray-600 leading-[1.6] h-full"
                     style={{ fontSize: '22pt', wordBreak: 'keep-all', overflowWrap: 'break-word', ...getTextStyle(page.content.textStyles, 5) }}
                 >
                     {page.content.text[5]}

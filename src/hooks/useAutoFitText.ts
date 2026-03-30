@@ -10,6 +10,8 @@ interface AutoFitOptions {
   minScaleRatio?: number;
   /** 한 번에 줄이는 비율 (0~1). 기본값: 0.97 (3%씩 감소) */
   stepRatio?: number;
+  /** 기준이 되는 폰트 크기 (pt). 제공되지 않으면 현재 스타일을 사용함. */
+  baseFontSize?: number;
 }
 
 /**
@@ -25,8 +27,7 @@ export function useAutoFitText(
   containerRef?: RefObject<HTMLElement>,
   options: AutoFitOptions = {}
 ) {
-  const { deps = [], minScaleRatio = 0.70, stepRatio = 0.97 } = options;
-  const originalFontSizeRef = useRef<number | null>(null);
+  const { deps = [], minScaleRatio = 0.50, stepRatio = 0.97, baseFontSize } = options;
 
   useEffect(() => {
     const el = textRef.current;
@@ -35,25 +36,23 @@ export function useAutoFitText(
     const container = containerRef?.current ?? el.parentElement;
     if (!container) return;
 
-    // 현재 폰트 크기를 원본으로 기록 (처음 한 번만)
-    if (originalFontSizeRef.current === null) {
-      originalFontSizeRef.current = parseFloat(getComputedStyle(el).fontSize);
+    // 명시적인 기준 폰트 크기가 있으면 강제 적용 (12pt 오류 방어)
+    if (baseFontSize) {
+      el.style.fontSize = `${baseFontSize}pt`;
     }
 
-    const originalSize = originalFontSizeRef.current;
+    // 현재 폰트 크기를 기준으로 설정
+    const originalSize = parseFloat(getComputedStyle(el).fontSize);
     const minSize = originalSize * minScaleRatio;
 
-    // 폰트 크기를 원본으로 리셋 후 오버플로우 체크
-    el.style.fontSize = '';
-
-    let currentSize = parseFloat(getComputedStyle(el).fontSize);
+    let currentSize = originalSize;
 
     // scrollHeight가 clientHeight를 초과하는 동안 폰트 크기 감소
     let iterations = 0;
     while (
       el.scrollHeight > container.clientHeight + 2 && // +2px 여유
       currentSize > minSize &&
-      iterations < 200
+      iterations < 100
     ) {
       currentSize = Math.max(currentSize * stepRatio, minSize);
       el.style.fontSize = `${currentSize.toFixed(2)}px`;

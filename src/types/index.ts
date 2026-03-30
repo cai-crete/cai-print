@@ -1,11 +1,11 @@
 // src/types/index.ts
 
-export type Purpose = 'report' | 'drawing' | 'panel' | 'video' | 'image';
+export type Purpose = 'report' | 'drawing' | 'panel' | 'video';
 export type Orientation = 'landscape' | 'portrait';
 
 export interface PageData {
     id: string;
-    type: 'cover' | 'toc' | 'bodyA' | 'bodyB' | 'bodyC' | 'panel' | 'drawing' | 'video' | 'image';
+    type: 'cover' | 'toc' | 'bodyA' | 'bodyB' | 'bodyC' | 'panel' | 'drawing' | 'video';
     content: {
         title: string;
         text: string[];
