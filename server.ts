@@ -9,6 +9,17 @@ const __dirname = path.dirname(__filename);
 const app = express();
 app.use(express.json({ limit: '50mb' }));
 
+// CORS 설정 미들웨어 추가
+app.use((req, res, next) => {
+    res.header('Access-Control-Allow-Origin', '*');
+    res.header('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
+    res.header('Access-Control-Allow-Headers', 'Origin, X-Requested-With, Content-Type, Accept');
+    if (req.method === 'OPTIONS') {
+        return res.sendStatus(200);
+    }
+    next();
+});
+
 const SAVE_DIR = 'C:\\Users\\Crete_\\Pictures\\cai-print';
 
 app.post('/api/save-images', async (req, res) => {
@@ -39,7 +50,60 @@ app.post('/api/save-images', async (req, res) => {
   }
 });
 
+// 이미지 라이브러리 목록 API 추가 (유형 분석 로직 확장)
+app.get('/api/list-images', (req, res) => {
+    const LIB_DIR = path.join(__dirname, 'public', 'image library');
+    const categories = ['A', 'B', 'C'];
+    const result: Record<string, any[]> = {};
+
+    try {
+        categories.forEach(cat => {
+            const dirPath = path.join(LIB_DIR, cat);
+            if (fs.existsSync(dirPath)) {
+                const files = fs.readdirSync(dirPath);
+                result[cat] = files
+                    .filter(file => /\.(png|jpe?g|webp)$/i.test(file))
+                    .map(file => {
+                        const lowFile = file.toLowerCase();
+                        let type = 'Image';
+                        let tag = '[TAG: DIA]';
+
+                        if (lowFile.includes('bird') || lowFile.includes('view') && (lowFile.includes('eye') || lowFile.includes('birdseye')) || lowFile.includes('조감도')) {
+                            type = 'Bird\'s Eye View'; tag = '[TAG: BEV]';
+                        } else if (lowFile.includes('interior') || lowFile.includes('실내') || lowFile.includes('lobby') || lowFile.includes('room')) {
+                            type = 'Interior'; tag = '[TAG: INT]';
+                        } else if (lowFile.includes('perspective') || lowFile.includes('view') || lowFile.includes('투시도')) {
+                            type = 'Perspective'; tag = '[TAG: FPV]';
+                        } else if (lowFile.includes('section') || lowFile.includes('단면')) {
+                            type = 'Section'; tag = '[TAG: SEC]';
+                        } else if (lowFile.includes('elevation') || lowFile.includes('입면')) {
+                            type = 'Elevation'; tag = '[TAG: ELV]';
+                        } else if (lowFile.includes('site') || lowFile.includes('master') || lowFile.includes('배치')) {
+                            type = 'Master Plan'; tag = '[TAG: MST]';
+                        } else if (lowFile.includes('plan') || lowFile.includes('floor') || lowFile.includes('평면')) {
+                            type = 'Floor Plan'; tag = '[TAG: PLN]';
+                        } else if (lowFile.includes('diagram') || lowFile.includes('concept') || lowFile.includes('다이어그램')) {
+                            type = 'Diagram'; tag = '[TAG: DIA]';
+                        }
+
+                        return {
+                            src: `/image library/${cat}/${file}`,
+                            type: type,
+                            tag: tag
+                        };
+                    });
+            } else {
+                result[cat] = [];
+            }
+        });
+        res.json(result);
+    } catch (error) {
+        console.error('Failed to list images:', error);
+        res.status(500).json({ error: error.message });
+    }
+});
+
 const PORT = 3001;
 app.listen(PORT, () => {
-  console.log(`Image save server running at http://localhost:${PORT}`);
+  console.log(`Server running at http://localhost:${PORT}`);
 });

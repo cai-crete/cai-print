@@ -140,6 +140,8 @@ export default function App() {
   const [projectKeyword, setProjectKeyword] = useState('');
   const [title, setTitle] = useState('No11. print');
   const [images, setImages] = useState<LibraryImage[]>(DEFAULT_IMAGES);
+  const [libraryData, setLibraryData] = useState<Record<string, LibraryImage[]>>({ A: [], B: [], C: [] });
+  const [currentCategory, setCurrentCategory] = useState<'A' | 'B' | 'C'>('A');
   const [historyImages, setHistoryImages] = useState<LibraryImage[]>([]);
   const [isLibraryOpen, setIsLibraryOpen] = useState(false);
   const [isHistoryOpen, setIsHistoryOpen] = useState(false);
@@ -166,6 +168,26 @@ export default function App() {
     renderedFontFamily?: string;
   } | null>(null);
   const [isTablet, setIsTablet] = useState(false);
+
+  // Fetch Image Library from Server
+  useEffect(() => {
+    fetch('http://localhost:3001/api/list-images')
+      .then(res => res.json())
+      .then(data => {
+        setLibraryData(data);
+        if (data[currentCategory]) {
+          setImages(data[currentCategory]);
+        }
+      })
+      .catch(err => console.error("Failed to fetch library images:", err));
+  }, []);
+
+  // Update displayed images when category changes
+  useEffect(() => {
+    if (libraryData[currentCategory]?.length > 0) {
+      setImages(libraryData[currentCategory]);
+    }
+  }, [currentCategory, libraryData]);
 
   useEffect(() => {
     const handleResize = () => {
@@ -418,8 +440,12 @@ export default function App() {
       const authKey = (import.meta as any).env?.VITE_GEMINI_API_KEY || (process as any).env?.GEMINI_API_KEY || '';
       const ai = new GoogleGenAI({ apiKey: authKey });
 
-      const targetImages = selectedImages.length > 0 ? selectedImages : images.map(i => i.src);
-      const imagesToAnalyze = targetImages.slice(0, 20); // 분석 이미지 범위를 최대 20장으로 확대
+      const targetImages = selectedImages.length > 0 
+        ? selectedImages 
+        : (libraryData['A']?.length > 0 ? libraryData['A'].map(i => i.src) : images.map(i => i.src));
+      
+      // 분석 대상 이미지의 메타데이터(Tag) 포함
+      const imagesToAnalyze = targetImages.slice(0, 20);
 
       const contents: any[] = [];
       // 현재 적용할 목적(용도) 결정 — state가 업데이트되기 전일 수 있어 overridePurpose 우선 사용
@@ -457,25 +483,33 @@ ${ERROR_CORRECTION}
 - **생성하는 문서의 대제목, 소제목, 본문 텍스트 어느 곳에도 'No11. print'라는 단어를 포함하지 마십시오.**
 - 만약 사용자 입력에 제목이 없다면, 이미지에서 추출한 핵심 건축 개념(예: 'Urban Grid', 'Nature-inspired Space')을 제목으로 사용하십시오.
 
-# PHYSICAL CONSTRAINTS (물리적 제약 조건 - 중요)
-생성된 각 텍스트는 해당 영역의 물리적 텍스트 박스(Text Box) 크기를 절대 초과해서는 안 됩니다.
-1. **보고서 본문 (Report Body)**: 107mm x 196mm 영역 내 14pt 폰트 적용. 최대 10~12줄(약 400자 이내)로 요약/축약하십시오.
-2. **패널 (Panel)**: 정해진 그리드 칸을 넘지 않도록 문장을 단조(Simple)화하고 공간 묘사 위주로 핵심만 정리하십시오.
-3. **대제목 (Main Title)**: 20자 이내로 압축적으로 표현하십시오.
-"텍스트가 박스를 벗어나지 않도록 불필요한 수식어를 과감히 제하고, 압축적으로 요약하여 글쓰기 쿼리티를 높이십시오."
-**페이지 분량: ${currentNumPages}페이지**
+# REPORT_TEMPLATE_31 HIERARCHY (템플릿 위계 - 핵심)
+각 페이지는 다음의 4단계 위계에 따라 텍스트를 구성해야 합니다:
+1. **메인 타이틀 (Main Title)**: 전체 프로젝트명 (모든 내지 상단 고정).
+2. **서브 타이틀 (Sub Title)**: 해당 페이지의 디자인 테마 또는 주제 (예: 'Massing Process', 'Internal Void').
+3. **페이지 요약 (Page Summary)**: 해당 페이지 전체의 핵심 내용을 설명하는 상단 가로 긴 문장.
+4. **이미지 스토리 (Image Story)**: 개별 이미지에 대한 기술적/미적 상세 설명.
 
-### 실행 단계 (Protocol Sequence):
-1. **이미지 온톨로지 분석**: {IMG_ANALYSIS}의 13단계 체계 중 핵심 요소(형태, 공간, 재료, 맥락)를 분석하여 공간적 인사이트를 도출합니다.
-2. **사고 단위 분절 (AoT)**: {REF_BOOK}의 'Tectonics of Logic' 원칙에 따라 대제목(Q0), 소제목, 프롤로그, 본문의 논리적 위계를 설계합니다.
-3. **감각적 인터페이스 적용**: {REF_BOOK}의 'Materiality' 원칭에 따라 형용사를 구체적인 물성 어휘로 변환합니다.
-4. **마감 및 자가 교정**: {ERROR_CORRECTION}을 통해 상투적 표현을 제거하고, {SPEECH_VERIFICATION}의 리듬감을 점검합니다.
+# FILL-ALL POLICY & EXCEPTIONS (전체 채우기 원칙 및 예외)
+- **원칙**: 문서 내 모든 텍스트 박스(text[0] ~ text[n])는 빈칸 없이 풍성하게 채워야 합니다.
+- **예외**: 특정 이미지 슬롯에 이미지가 배정되지 않은 경우(null/empty), 해당 이미지에 대한 설명('Image Story')만은 반드시 **빈 문자열("")**로 반환하십시오.
+- **매핑 가이드**:
+  - **Body A**: text[2] (이미지 1의 스토리)
+  - **Body B**: text[2] (이미지 1의 스토리), text[3] (이미지 2의 스토리)
+  - **Body C**: text[2] (이미지 1의 스토리), text[3] (이미지 2의 스토리), text[4] (이미지 3의 스토리)
 
-### 출력 형식 (Markdown):
-1. 대제목 (Main Title): 프로젝트의 정체성.
-2. 소제목 (Sub Title): 감성적/기능적 슬로건.
-3. 프롤로그 (Prologue): [4~7줄] 건축적 산책로(Promenade)를 여는 도입부.
-4. 본문 단락 (Body Paragraphs): [최소 2개 문단] (**[문단주제]**\n> [문단내용]) 형식. 각 문단은 3~6줄.
+# PHYSICAL CONSTRAINTS (물리적 제약 조건)
+1. **표지 (TemplateCover)**:
+   - 메인 타이틀: 72pt, 강력한 건축적 어조.
+   - 서브 타이틀 (text[0]): 28pt, 위치 및 핵심 컨셉 설명.
+   - 키워드 (text[2]): 12pt, 전체 맥락을 분석한 **핵심 키워드 4개** (예: URBAN / GRID / VOID / NATURE).
+   - 기업명 (text[3]): 사용자가 편집할 'COMPANY NAME'.
+2. **페이지 요약 (page-desc-area, 11pt)**: 가로 400mm 영역. 최대 2줄(약 80자)로 요체만 작성.
+3. **이미지 스토리 (desc-vertical/desc-horizontal, 11pt)**: 가로/세로 영역에 맞춰 최대 3~5줄 이내로 작성.
+
+# DYNAMIC DATA (동적 데이터)
+- **현재 날짜**: ${new Date().toLocaleDateString('ko-KR', { year: 'numeric', month: '2-digit', day: '2-digit' }).replace(/\s/g, '').replace(/\.$/, '')}
+- 위의 현재 날짜를 표지('text[1]')에 기본 적용하십시오.
 `;
 
       const promptText = `
@@ -552,14 +586,12 @@ ${systemPrompt}
     const fallbackMatch = currentTextInput.match(/\*\*대제목[:\s：]+\*\*\s*(.+)/i) || currentTextInput.match(/\*\s*\*\*대제목[:\s：]+\*\*\s*(.+)/i);
     if (fallbackMatch && (currentTitle === 'No11. print' || !overrideTitle)) {
       currentTitle = fallbackMatch[1].trim().replace(/[*_`]/g, '').trim();
-      // setTitle(currentTitle); // 이제 전체 타이틀은 'No11. print'로 고정되므로 state 업데이트를 방지합니다.
     }
 
     // [Phase 5] 자동 AI 텍스트 생성 연동: 텍스트가 필요한 모드인데 기본값이면 자동으로 실행
     if (!isAutoGenerate && ['report', 'drawing', 'panel'].includes(promptPurpose) && (textInput === DEFAULT_TEXT_INPUT || textInput.trim() === "")) {
       const result = await handleAutoGenerateText(promptPurpose, numPages, false);
       if (result) {
-        // AI 결과를 가지고 handleGenerate 재호출
         await handleGenerate(promptPurpose, true, result.text, result.title);
         return;
       }
@@ -575,14 +607,8 @@ ${systemPrompt}
       try {
         const dim = await getImageDimensions(selectedImages[0]);
         console.log(`[Veo 3.1] Generating video for resolution ${dim.width}x${dim.height}`);
-
-        // 실제 Veo 3.1 API 호출 시뮬레이션 (API Key, File URI 획득 등 포함)
         const apiKey = (import.meta as any).env?.VITE_GEMINI_API_KEY || '';
-        const url = `https://generativelanguage.googleapis.com/v1beta/models/veo-3.1-generate-preview:generateVideo?key=${apiKey}`;
-
-        // 5초간 생성 대기 시뮬레이션
         await new Promise(resolve => setTimeout(resolve, 5000));
-
         alert(`[VEO 3.1 생성을 완료했습니다]\n- 원본 이미지 해상도(${dim.width}x${dim.height}) 자동 인식 적용 완료.\n- API를 통해 생성된 영상이 준비되었습니다.`);
       } catch (e) {
         console.error('Veo API Error:', e);
@@ -596,7 +622,6 @@ ${systemPrompt}
     let currentPurpose: Purpose = (typeof overridePurpose === 'string') ? overridePurpose as Purpose : purpose;
     let currentOrientation: Orientation = orientation;
 
-    // Recognize keywords and apply settings
     const combinedText = (title + ' ' + currentTextInput).toLowerCase();
 
     let resolvedProjectType = projectType;
@@ -604,24 +629,19 @@ ${systemPrompt}
       if (combinedText.includes('상업') || combinedText.includes('commercial')) resolvedProjectType = '상업';
       else if (combinedText.includes('공공') || combinedText.includes('public')) resolvedProjectType = '공공';
       else if (combinedText.includes('복합') || combinedText.includes('mixed')) resolvedProjectType = '복합시설';
-      else resolvedProjectType = '주거'; // Default
+      else resolvedProjectType = '주거';
       setProjectType(resolvedProjectType);
     }
     if (combinedText.includes('판넬 -세로')) {
-      currentPurpose = 'panel';
-      currentOrientation = 'portrait';
-      setPurpose('panel');
-      setOrientation('portrait');
+      currentPurpose = 'panel'; currentOrientation = 'portrait';
+      setPurpose('panel'); setOrientation('portrait');
     } else if (combinedText.includes('판넬 -가로')) {
-      currentPurpose = 'panel';
-      currentOrientation = 'landscape';
-      setPurpose('panel');
-      setOrientation('landscape');
+      currentPurpose = 'panel'; currentOrientation = 'landscape';
+      setPurpose('panel'); setOrientation('landscape');
     }
 
     setIsGenerating(true);
 
-    // --- Dynamic Hero Selection Logic (Moved up for auto-selection) ---
     let targetTags: string[] = [];
     let reasoningTemplate = '';
     if (resolvedProjectType === '주거') {
@@ -637,112 +657,69 @@ ${systemPrompt}
       targetTags = ['[TAG: ELV]', '[TAG: DIA]'];
       reasoningTemplate = '서로 다른 프로그램이 수직/수평으로 어떻게 결합하는지 직관적으로 보여주는 도면 우선 배치를 통해 기획 의도를 강조했습니다.';
     } else {
-      targetTags = ['[TAG: BEV]', '[TAG: FPV]']; // Default fallback
+      targetTags = ['[TAG: BEV]', '[TAG: FPV]'];
       reasoningTemplate = '프로젝트의 전체적인 이미지를 잘 보여주는 투시도를 우선 배치하였습니다.';
     }
 
     let sourceImagesRaw = [...selectedImages];
 
-    // 자동 이미지 선택 로직: 선택된 이미지가 없을 경우 라이브러리에서 최적의 이미지 추출
-    if (sourceImagesRaw.length === 0 && images.length > 0) {
-      const allScored = await Promise.all(images.map(async (libImg) => {
-        const img = libImg.src;
-        const dim = await getImageDimensions(img);
-        const fileName = decodeURIComponent(img.split('/').pop() || '').toLowerCase();
-        let tag = '[TAG: DIA]';
-        if (fileName.includes('bird') || fileName.includes("bird's eye") || fileName.includes('birdseye') || fileName.includes('조감도')) tag = '[TAG: BEV]';
-        else if (fileName.includes('front') || fileName.includes('perspective') || fileName.includes('투시도') || fileName.includes('정면')) tag = '[TAG: FPV]';
-        else if (fileName.includes('low') || fileName.includes('low angle') || fileName.includes('로우앵글')) tag = '[TAG: LAV]';
-        else if (fileName.includes('plan') || fileName.includes('floor') || fileName.includes('floorplan') || fileName.includes('평면도')) tag = '[TAG: PLN]';
-        else if (fileName.includes('elevation') || fileName.includes('입면도') || fileName.includes('남측') || fileName.includes('북측') || fileName.includes('동측') || fileName.includes('서측')) tag = '[TAG: ELV]';
-
-        let score = 20;
-        if (targetTags.includes(tag)) score = 100;
-        else if (['[TAG: BEV]', '[TAG: FPV]', '[TAG: LAV]'].includes(tag)) score = 80;
-        else if (['[TAG: PLN]', '[TAG: ELV]'].includes(tag)) score = 60;
-
-        return { src: img, score };
-      }));
-
-      allScored.sort((a, b) => b.score - a.score);
-
-      let countToSelect = 8;
-      if (currentPurpose === 'panel') countToSelect = 10;
-      else if (currentPurpose === 'video') countToSelect = 2;
-
-      const autoSelected = allScored.slice(0, countToSelect).map(i => i.src);
-      setSelectedImages(autoSelected);
-      sourceImagesRaw = autoSelected;
-    } else if (sourceImagesRaw.length === 0) {
-      sourceImagesRaw = images.length > 0 ? [images[0].src] : [];
+    if (sourceImagesRaw.length === 0) {
+      const baseImages = (libraryData['A'] && libraryData['A'].length > 0) ? libraryData['A'] : images;
+      if (baseImages.length > 0) {
+        const allScored = await Promise.all(baseImages.map(async (libImg) => {
+          const img = libImg.src;
+          const tag = libImg.tag || '[TAG: DIA]';
+          let score = 20;
+          if (targetTags.includes(tag)) score = 100;
+          else if (['[TAG: BEV]', '[TAG: FPV]', '[TAG: LAV]', '[TAG: INT]'].includes(tag)) score = 80;
+          else if (['[TAG: PLN]', '[TAG: ELV]', '[TAG: SEC]', '[TAG: MST]'].includes(tag)) score = 60;
+          return { src: img, score };
+        }));
+        allScored.sort((a, b) => b.score - a.score);
+        let countToSelect = currentPurpose === 'panel' ? 10 : currentPurpose === 'video' ? 2 : 8;
+        const autoSelected = allScored.slice(0, countToSelect).map(i => i.src);
+        setSelectedImages(autoSelected);
+        sourceImagesRaw = autoSelected;
+      }
     }
 
-    // AI Heuristics: Analyze and Score Images (Tag Assignment)
     const analyzedImages = await Promise.all(sourceImagesRaw.map(async (img) => {
+      const libImg = [...libraryData.A, ...libraryData.B, ...libraryData.C, ...images].find(i => i.src === img);
+      const tag = libImg?.tag || '[TAG: DIA]';
+      const typeLabel = libImg?.type || 'Image';
       const dim = await getImageDimensions(img);
-      const aspect = dim.width / dim.height;
       let score = 50;
       let priority = 3;
 
-      const fileName = decodeURIComponent(img.split('/').pop() || '').toLowerCase();
-      let internalTag = '[TAG: DIA]';
-      let title = 'Diagram / Concept';
-
-      if (fileName.includes('bird') || fileName.includes("bird's eye") || fileName.includes('birdseye') || fileName.includes('조감도')) {
-        internalTag = '[TAG: BEV]';
-        title = "Bird's Eye View";
-      } else if (fileName.includes('front') || fileName.includes('perspective') || fileName.includes('투시도') || fileName.includes('정면')) {
-        internalTag = '[TAG: FPV]';
-        title = 'Front Perspective View';
-      } else if (fileName.includes('low') || fileName.includes('low angle') || fileName.includes('로우앵글')) {
-        internalTag = '[TAG: LAV]';
-        title = 'Low Angle View';
-      } else if (fileName.includes('plan') || fileName.includes('floor') || fileName.includes('floorplan') || fileName.includes('평면도')) {
-        internalTag = '[TAG: PLN]';
-        title = 'Floor Plan';
-      } else if (fileName.includes('elevation') || fileName.includes('입면도') || fileName.includes('남측') || fileName.includes('북측') || fileName.includes('동측') || fileName.includes('서측')) {
-        internalTag = '[TAG: ELV]';
-        title = 'Elevation';
-      } else if (fileName.includes('diagram') || fileName.includes('다이어그램') || fileName.includes('concept') || fileName.includes('콘셉트') || fileName.includes('분석')) {
-        internalTag = '[TAG: DIA]';
-        title = 'Diagram / Concept';
-      }
-
       if (img === heroImage) {
         score = 100; priority = 1;
-      } else if (['[TAG: BEV]', '[TAG: FPV]', '[TAG: LAV]'].includes(internalTag)) {
+      } else if (['[TAG: BEV]', '[TAG: FPV]', '[TAG: LAV]', '[TAG: INT]'].includes(tag)) {
         score = 80; priority = 2;
-      } else if (['[TAG: PLN]', '[TAG: ELV]'].includes(internalTag)) {
+      } else if (['[TAG: PLN]', '[TAG: ELV]', '[TAG: SEC]', '[TAG: MST]'].includes(tag)) {
         score = 60; priority = 2;
       } else {
         score = 20; priority = 4;
       }
-
-      return { src: img, score, priority, dim, tag: internalTag, title };
+      return { src: img, tag, title: typeLabel, score, priority, dim };
     }));
 
-    // Boost the score (override priority) for images matching the target tags
     let heroAssigned = false;
     let heroReasoning = '';
-
     for (let i = 0; i < analyzedImages.length; i++) {
-      const imgInfo = analyzedImages[i];
-      if (targetTags.includes(imgInfo.tag)) {
-        imgInfo.score += 100; // Boost to guarantee it acts as Hero (Priority 1)
-        imgInfo.priority = 1;
-
-        if (!heroAssigned) {
-          heroReasoning = `이 프로젝트는 [${resolvedProjectType} / ${projectKeyword || '일반'}]에 해당하므로, ${reasoningTemplate}`;
-          heroAssigned = true;
+        const imgInfo = analyzedImages[i];
+        if (targetTags.includes(imgInfo.tag)) {
+            imgInfo.score += 100;
+            imgInfo.priority = 1;
+            if (!heroAssigned) {
+                heroReasoning = `이 프로젝트는 [${resolvedProjectType} / ${projectKeyword || '일반'}]에 해당하므로, ${reasoningTemplate}`;
+                heroAssigned = true;
+            }
+        } else if (imgInfo.priority === 1) {
+            imgInfo.priority = 2;
+            imgInfo.score = 80;
         }
-      } else if (imgInfo.priority === 1) {
-        // Demote manual hero if it doesn't match the new dynamic rule (optional, but requested for 'auto hierarchy')
-        imgInfo.priority = 2;
-        imgInfo.score = 80;
-      }
     }
 
-    // Sort by score descending
     analyzedImages.sort((a, b) => b.score - a.score);
 
     const pageStructures: { type: string, textCount: number, description: string }[] = [];
@@ -750,89 +727,31 @@ ${systemPrompt}
 
     for (let i = 0; i < numPages; i++) {
       if (currentPurpose === 'drawing') {
-        pageStructures.push({ type: 'drawing', textCount: 5, description: "Drawing page. text[0]: NOTE (multiline), text[1]: DESIGNED BY, text[2]: ARCHITECTURAL ENGINEER, text[3]: APPROVED BY, text[4]: APPROVAL DATE (YYYY.MM.DD)" });
+        pageStructures.push({ type: 'drawing', textCount: 5, description: "Drawing page." });
       } else if (currentPurpose === 'panel') {
-        pageStructures.push({ type: 'panel', textCount: 13, description: "Panel page. text[0]: Subtitle, text[1]: Main description, text[2]: Left section title, text[3]: Left section description, text[4]: Right section title, text[5]: Right section description. text[6] to text[12]: Short captions for up to 7 images." });
+        pageStructures.push({ type: 'panel', textCount: 13, description: "Panel page." });
       } else if (currentPurpose === 'video') {
-        pageStructures.push({ type: 'video', textCount: 1, description: "Video storyboard page. text[0]: Scene description." });
+        pageStructures.push({ type: 'video', textCount: 1, description: "Video page." });
       } else if (currentPurpose === 'report') {
-        if (i === 0) {
-          pageStructures.push({ type: 'cover', textCount: 1, description: "Cover page. text[0]: A catchy subtitle or brief description (1-2 sentences)." });
-        } else if (i === 1 && numPages > 1) {
-          pageStructures.push({ type: 'toc', textCount: 12, description: "Table of Contents. 6 pairs of [Topic Title, Short Description]. Total 12 strings." });
-        } else {
-          const offset = 2;
-          const type = bodyTypes[Math.max(0, i - offset) % bodyTypes.length];
-          if (type === 'bodyA') {
-            pageStructures.push({ type, textCount: 2, description: "Body A. text[0]: Main detailed paragraph (3-4 sentences), text[1]: Secondary detailed paragraph (4-5 sentences)." });
-          } else if (type === 'bodyB') {
-            pageStructures.push({ type, textCount: 5, description: "Body B. text[0-2]: 3 short process steps. text[3]: Left image caption/description. text[4]: Right image caption/description." });
-          } else if (type === 'bodyC') {
-            pageStructures.push({ type, textCount: 6, description: "Body C. text[0-2]: 3 short process steps. text[3-5]: 3 short image captions/descriptions." });
-          }
+        if (i === 0) pageStructures.push({ type: 'cover', textCount: 4, description: "Cover." });
+        else if (i === 1 && numPages > 1) pageStructures.push({ type: 'toc', textCount: 12, description: "TOC." });
+        else {
+          const type = bodyTypes[Math.max(0, i - 2) % bodyTypes.length];
+          pageStructures.push({ type, textCount: type === 'bodyA' ? 3 : type === 'bodyB' ? 4 : 5, description: `Body ${type.charAt(4)}.` });
         }
       }
     }
 
     let generatedContent: any[] = [];
-
     try {
       const ai = new GoogleGenAI({ apiKey: (import.meta as any).env?.VITE_GEMINI_API_KEY || process.env.GEMINI_API_KEY || '' });
-
-      // Auto generation from prompt is entirely handled by text Gemini model.
-      // Removed the image auto-generation from here to strictly use the 5 default or selected images.
-
       const prompt = `
 ${PROMPT_ARCHITECT}
-
-# WRITING GUIDELINES
-${REF_BOOK}
-
 # TASK
-You are an expert architectural and design document generator following the 'writer' protocol.
-The user wants to generate a document with ${pageStructures.length} pages.
-The purpose of the document is: ${currentPurpose}.
-The current project title (Optional): "${currentTitle === 'No11. print' ? 'Untitled Project' : currentTitle}".
-**IMPORTANT: 'No11. print' is the APP NAME. DO NOT use it in the generated content (titles, body, captions).**
-The user provided the following raw text input:
-"""
-${currentTextInput || "No input provided. Please generate generic, professional placeholder content suitable for an architectural/design document."}
-"""
-
-**CRITICAL RULES FOR TEXT LENGTH & CONTENT QUALITY:**
-1. THE TEXT MUST FIT WITHIN THE DESIGNATED LAYOUT BOXES WITHOUT OVERFLOWING.
-2. IF THE INPUT TEXT IS TOO LONG, AUTOMATICALLY **SUMMARIZE AND CONDENSE** IT INTO A NATURAL, WELL-STRUCTURED VERSION.
-3. **DO NOT USE ELLIPSIS (...)** OR TRUNCATE THE TEXT. OUTPUT MUST BE COMPLETE AND COHERENT.
-4. GENERATE THE CONTENT IN THE SAME LANGUAGE AS THE USER'S INPUT (DEFAULT TO KOREAN).
-**STRICTLY ADHERE TO THE FOLLOWING PHYSICAL BOUNDARY CONSTRAINTS (mm) AND BASE FONT SIZES (pt):**
-The system has a 'Dynamic Fit' capability that shrinks font size if text overflows, but you MUST aim for the ideal length based on the dimensions below.
-
-**FOR PANEL (LANDSCAPE/PORTRAIT):**
-- **Panel Title (-1)**: Box is approx 373mm x 75mm (Landscape) / 770mm x 75mm (Portrait). Base: 140pt. **Limit: MUST summarize to fit in 1 line.**
-- **Panel Subtitle (0)**: Box is approx 373mm x 60mm (Landscape) / 770mm x 45mm (Portrait). Base: 90pt. **Limit: Max 2 lines.**
-- **Panel Intro (1)**: Box is approx 181mm x 115mm (Landscape) / 770mm x 74mm (Portrait). Base: 22pt. **Limit: Max 8-10 lines. Summarize content tightly.**
-- **Panel Section Subtitles (2, 4)**: Box is approx 181mm x 25mm. Base: 42pt. **Limit: MUST BE 1 LINE.**
-- **Panel Section Body (3, 5)**: Box is approx 181mm x 195mm (Landscape) / 181mm x 115mm (Portrait). Base: 22pt. **Limit: Max 15 lines. Remove fluff, use architectural keywords.**
-
-**FOR OTHER TEMPLATES:**
-- **Cover Title**: Box approx 1000mm x 200mm. Base 160pt. **Limit: Max 1 line.**
-- **Cover Subtitle**: Box approx 1000mm x 100mm. Base 60pt. **Limit: Max 2 lines. Summarize to fit.**
-- **Body A Intro/Details**: Box approx 107mm x 196mm (Side Column). Base 14pt. **Limit: Max 12 lines total. Summarize and organize input text to fit this narrow vertical box.**
-
-**CRITICAL RULE: DO NOT OVERFILL.** It is better to have slightly less text than too much. Your goal is to SUMMARIZE the input text so it fits beautifully in the designated area.
-- PAGE 1 MUST ALWAYS BE TYPE 'cover'.
-- PAGE 2 MUST ALWAYS BE TYPE 'toc'.
-- SUBSEQUENT PAGES SHOULD BE 'bodyA', 'bodyB', or 'bodyC'.
-
-Generate an array of exactly ${numPages} page objects. Each object must have:
-- title: A short title for the page.
-- text: An array of strings, exactly matching the required text count for that page type.
-
-Here are the required text counts and descriptions for each page:
-${pageStructures.map((p, i) => `Page ${i + 1} (${p.type}): ${p.textCount} text fields. ${p.description}`).join('\n')}
-
+Generate a document with ${pageStructures.length} pages for ${currentPurpose}. Project title: "${currentTitle}".
+Input text: """${currentTextInput || "Professional architectural placeholder."}"""
+${pageStructures.map((p, i) => `Page ${i + 1} (${p.type}): ${p.textCount} text fields.`).join('\n')}
 `;
-
       const response = await ai.models.generateContent({
         model: "gemini-3-flash-preview",
         contents: prompt,
@@ -842,57 +761,24 @@ ${pageStructures.map((p, i) => `Page ${i + 1} (${p.type}): ${p.textCount} text f
             type: Type.ARRAY,
             items: {
               type: Type.OBJECT,
-              properties: {
-                title: { type: Type.STRING },
-                text: {
-                  type: Type.ARRAY,
-                  items: { type: Type.STRING }
-                }
-              },
+              properties: { title: { type: Type.STRING }, text: { type: Type.ARRAY, items: { type: Type.STRING } } },
               required: ["title", "text"]
             }
           }
         }
       });
-
       generatedContent = JSON.parse(response.text || "[]");
     } catch (error) {
-      console.error("Error generating content with AI:", error);
-      // Fallback to basic text chunking if AI fails
+      console.error("AI Error:", error);
       let textChunks = textInput.split('\n\n').filter(t => t.trim().length > 0);
       let textIdx = 0;
-      const getNextText = (count: number) => {
-        const res = [];
-        for (let i = 0; i < count; i++) {
-          res.push(textChunks.length > 0 ? textChunks[textIdx % textChunks.length] : 'Placeholder text');
-          textIdx++;
-        }
-        return res;
-      };
-
-      const topics = [
-        "Design Concept & Inspiration", "Material & Texture Analysis", "Spatial Configuration",
-        "Lighting & Atmosphere", "Structural Details", "User Experience Flow"
-      ];
-
-      generatedContent = pageStructures.map((p, i) => {
-        // [Phase 5] AI가 생성한 타이틀이 있으면 우선 사용 (특히 Report Cover)
-        let pageTitle = p.type === 'cover' ? currentTitle : p.type === 'toc' ? 'Contents' : topics[i % topics.length];
-
-        // AI JSON 응답에 해당 페이지의 개별 타이틀이 있으면 덮어씌움
-        if (generatedContent[i]?.title) {
-          pageTitle = generatedContent[i].title;
-        }
-
-        return {
-          title: pageTitle,
-          text: getNextText(p.textCount)
-        };
-      });
+      generatedContent = pageStructures.map((p, i) => ({
+        title: p.type === 'cover' ? currentTitle : `Topic ${i}`,
+        text: Array.from({ length: p.textCount }, () => textChunks[textIdx++ % textChunks.length] || 'Placeholder')
+      }));
     }
 
     let imgPool = [...analyzedImages];
-
     const getNextImagesIntelligently = (count: number, type: string) => {
       if (type === 'panel') {
         const result: string[] = [];
@@ -900,81 +786,50 @@ ${pageStructures.map((p, i) => `Page ${i + 1} (${p.type}): ${p.textCount} text f
         const tagsResult: string[] = [];
         const titlesResult: string[] = [];
 
-        // ── 슬롯 정의 (TemplatePanel 기준) ──────────────────────────────
-        // images[0]   -> Slot_L  (Hero, 대형 1개)
-        // images[1~2] -> Slot_M  (Info, 중형 2개)
-        // images[3~9] -> Slot_S  (Support, 소형 7개)
-        const SLOT_L_COUNT = 1;
-        const SLOT_M_COUNT = 2;
-        const SLOT_S_COUNT = 7;
-        const TOTAL = SLOT_L_COUNT + SLOT_M_COUNT + SLOT_S_COUNT; // 10
-
         const HERO_TAGS = ['[TAG: BEV]', '[TAG: FPV]', '[TAG: LAV]'];
-        const HERO_PRIORITY: Record<string, number> = { '[TAG: BEV]': 1, '[TAG: FPV]': 2, '[TAG: LAV]': 3 };
-        const MEDIUM_TAGS = ['[TAG: PLN]', '[TAG: ELV]'];
-        const SMALL_TAGS = ['[TAG: DIA]'];
+        const MAIN_TAGS = ['[TAG: PLN]', '[TAG: ELV]', '[TAG: SEC]', '[TAG: MST]'];
+        const SUPPORT_TAGS = ['[TAG: DIA]', '[TAG: INT]'];
 
         let pool = [...imgPool];
-
-        // ── 1순위: Slot_L 채우기 (HeroImage 우선, 그다음 BEV > FPV > LAV) ──
-        const heroCandidates = pool.filter(i => HERO_TAGS.includes(i.tag));
-        heroCandidates.sort((a, b) => (HERO_PRIORITY[a.tag] ?? 99) - (HERO_PRIORITY[b.tag] ?? 99));
-
-        const heroInPool = pool.find(i => i.src === heroImage);
-        const heroSelected = heroInPool || heroCandidates[0] || pool[0] || null;
-
-        if (heroSelected) {
-          result.push(heroSelected.src); dimsResult.push(heroSelected.dim);
-          tagsResult.push(heroSelected.tag); titlesResult.push(heroSelected.title);
-          pool = pool.filter(i => i.src !== heroSelected.src);
+        
+        // 1. Hero Slot (Slot 0)
+        const heroMatch = pool.find(i => HERO_TAGS.includes(i.tag)) || pool[0];
+        if (heroMatch) {
+          result.push(heroMatch.src); dimsResult.push(heroMatch.dim);
+          tagsResult.push(heroMatch.tag); titlesResult.push(heroMatch.title);
+          pool = pool.filter(i => i.src !== heroMatch.src);
         }
 
-        // 1순위에서 탈락한 잉여 투시도 -> Slot_S 후보로 강등
-        const leftoverPerspectives = pool.filter(i => HERO_TAGS.includes(i.tag));
-        pool = pool.filter(i => !HERO_TAGS.includes(i.tag));
-
-        // ── 2순위: Slot_M 채우기 (PLN, ELV) - 파일명 번호 순 정렬 ────────
-        const medImgs = pool
-          .filter(i => MEDIUM_TAGS.includes(i.tag))
-          .sort((a, b) => {
-            const numA = parseInt((a.src.match(/\d+/) || ['0'])[0], 10);
-            const numB = parseInt((b.src.match(/\d+/) || ['0'])[0], 10);
-            return numA - numB;
-          })
-          .slice(0, SLOT_M_COUNT);
-
-        medImgs.forEach(it => {
-          result.push(it.src); dimsResult.push(it.dim);
-          tagsResult.push(it.tag); titlesResult.push(it.title);
-          pool = pool.filter(i => i.src !== it.src);
-        });
-
-        // ── 3순위: Slot_S 채우기 (DIA + 잉여 투시도) ────────────────────
-        const diaImgs = pool.filter(i => SMALL_TAGS.includes(i.tag));
-        const slotSPool = [...diaImgs, ...leftoverPerspectives];
-
-        while (result.length < TOTAL) {
-          if (slotSPool.length > 0) {
-            const it = slotSPool.shift()!;
-            result.push(it.src); dimsResult.push(it.dim);
-            tagsResult.push(it.tag); titlesResult.push(it.title);
+        // 2. Main Info Slots (Slot 1-2)
+        for (let i = 0; i < 2; i++) {
+          const mainMatch = pool.find(i => MAIN_TAGS.includes(i.tag)) || pool[0];
+          if (mainMatch) {
+            result.push(mainMatch.src); dimsResult.push(mainMatch.dim);
+            tagsResult.push(mainMatch.tag); titlesResult.push(mainMatch.title);
+            pool = pool.filter(i => i.src !== mainMatch.src);
           } else {
-            // Rule B (Underflow): 빈 슬롯 -> 흰 배경으로 처리
             result.push(''); dimsResult.push({ width: 1, height: 1 });
             tagsResult.push(''); titlesResult.push('');
           }
         }
 
-        // 전역 imgPool 업데이트
-        imgPool = pool.filter(i => !slotSPool.some(s => s.src === i.src));
-        if (imgPool.length === 0) imgPool = [...analyzedImages];
+        // 3. Support Slots (Slot 3-9)
+        while (result.length < 10) {
+          const supportMatch = pool.find(i => SUPPORT_TAGS.includes(i.tag)) || pool[0];
+          if (supportMatch) {
+            result.push(supportMatch.src); dimsResult.push(supportMatch.dim);
+            tagsResult.push(supportMatch.tag); titlesResult.push(supportMatch.title);
+            pool = pool.filter(i => i.src !== supportMatch.src);
+          } else {
+            result.push(''); dimsResult.push({ width: 1, height: 1 });
+            tagsResult.push(''); titlesResult.push('');
+          }
+        }
 
+        if (imgPool.length === 0) imgPool = [...analyzedImages];
         return { images: result, dims: dimsResult, tags: tagsResult, titles: titlesResult };
       } else {
-        const result = [];
-        const dimsResult = [];
-        const tagsResult = [];
-        const titlesResult = [];
+        const result = []; const dimsResult = []; const tagsResult = []; const titlesResult = [];
         for (let i = 0; i < count; i++) {
           const it = imgPool.shift() || analyzedImages[i % analyzedImages.length];
           result.push(it?.src || '');
@@ -988,97 +843,41 @@ ${pageStructures.map((p, i) => `Page ${i + 1} (${p.type}): ${p.textCount} text f
     };
 
     const newPages: PageData[] = [];
-
     for (let i = 0; i < numPages; i++) {
       const structure = pageStructures[i];
-      if (!structure) continue;
       const aiContent = generatedContent[i] || { title: `Page ${i + 1}`, text: [] };
-
-      // Ensure text array has exactly the required length
       const textArray = [...(aiContent.text || [])];
       while (textArray.length < structure.textCount) textArray.push('');
-
-      let imgCount = 0;
-      if (structure.type === 'cover') imgCount = 1;
+      let imgCount = structure.type === 'panel' ? 10 : (structure.type === 'bodyB' ? 2 : (structure.type === 'bodyC' ? 3 : 1));
       if (structure.type === 'toc') imgCount = 0;
-      if (structure.type === 'bodyA') imgCount = 1;
-      if (structure.type === 'bodyB') imgCount = 2;
-      if (structure.type === 'bodyC') imgCount = 3;
-      if (structure.type === 'drawing') imgCount = 1;
-      if (structure.type === 'panel') imgCount = 10;
-      if (structure.type === 'video') imgCount = 1;
-
-      const intelligentAllocation = getNextImagesIntelligently(imgCount, structure.type);
-      let pageImages = intelligentAllocation.images;
-      const imageDimensions = intelligentAllocation.dims || [];
-
-      // [Phase 11] 3D 영상 생성 기능 연동
-      if (structure.type === 'video' && analyzedImages.length >= 2) {
-        try {
-          const img1 = analyzedImages[0].src;
-          const img2 = analyzedImages[1].src;
-          // Replicate API 호출 (독립 모듈)
-          const videoUrl = await create_transition_video(img1, img2);
-          pageImages = [videoUrl]; // 첫 번째 슬롯에 영상 URL 할당
-        } catch (err) {
-          console.error("Video Generation Failed:", err);
-        }
-      }
-
-      const imageTags = intelligentAllocation.tags || [];
-      const imageTitles = intelligentAllocation.titles || [];
-
+      const alloc = getNextImagesIntelligently(imgCount, structure.type);
       newPages.push({
         id: `page-${i}`,
         type: structure.type as any,
         content: {
           title: (aiContent.title && aiContent.title !== `Page ${i + 1}`) ? aiContent.title : currentTitle,
           text: textArray.slice(0, structure.textCount),
-          images: pageImages,
-          imageDimensions,
-          imageTags,
-          imageTitles,
+          images: alloc.images,
+          imageDimensions: alloc.dims,
+          imageTags: alloc.tags,
+          imageTitles: alloc.titles,
           reasoning: structure.type === 'panel' ? heroReasoning : undefined
         }
       });
     }
 
     setGeneratedPages(newPages);
-
-    // --- 자동 라이브러리 업로드 로직 (Background Capture) ---
     setTimeout(async () => {
       if (!exportContainerRef.current) return;
       await document.fonts.ready;
       const elements = Array.from(exportContainerRef.current.children);
       const snapshots: any[] = [];
-
       for (let i = 0; i < elements.length; i++) {
         const el = elements[i] as HTMLElement;
-        try {
-          // 저해상도로 템플릿 포착
-          const canvas = await html2canvas(el, {
-            scale: 0.25,
-            useCORS: true,
-            logging: false,
-            backgroundColor: '#ffffff',
-            scrollY: -window.scrollY,
-            scrollX: 0
-          });
-          const dataUrl = canvas.toDataURL('image/jpeg', 0.8);
-          snapshots.push({
-            src: dataUrl,
-            type: 'GENERATED_TMPL',
-            dim: { x: canvas.width, y: canvas.height },
-            title: `Generated_Page_${i + 1}`,
-            tag: '[TAG: DIA]'
-          });
-        } catch (e) {
-          console.error("Thumbnail capture failed:", e);
-        }
+        const canvas = await html2canvas(el, { scale: 0.25, useCORS: true, logging: false, backgroundColor: '#ffffff' });
+        snapshots.push({ src: canvas.toDataURL('image/jpeg', 0.8), type: 'GENERATED_TMPL', tag: '[TAG: DIA]' });
       }
-      if (snapshots.length > 0) {
-        setHistoryImages(prev => [...snapshots, ...prev]);
-      }
+      if (snapshots.length > 0) setHistoryImages(prev => [...snapshots, ...prev]);
     }, 2000);
 
     setCurrentPageIndex(0);
@@ -1389,7 +1188,32 @@ ${pageStructures.map((p, i) => `Page ${i + 1} (${p.type}): ${p.textCount} text f
           isLibraryOpen ? "opacity-100 scale-100 translate-x-0" : "opacity-0 scale-95 -translate-x-4 pointer-events-none"
         )}>
           <div className="flex justify-between items-center mb-6 px-1">
-            <h2 className="text-[13px] font-black tracking-widest text-black">LIBRARY</h2>
+            <div className="flex items-center gap-3">
+              <h2 className="text-[13px] font-black tracking-widest text-black">LIBRARY</h2>
+              <div className="flex items-center gap-1 bg-gray-100 rounded-lg p-0.5">
+                <button 
+                  onClick={() => {
+                    const cats: ('A' | 'B' | 'C')[] = ['A', 'B', 'C'];
+                    const idx = cats.indexOf(currentCategory);
+                    setCurrentCategory(cats[(idx - 1 + 3) % 3]);
+                  }}
+                  className="p-1 hover:bg-white rounded transition-all text-gray-500 hover:text-black"
+                >
+                  <ChevronLeft size={14} />
+                </button>
+                <span className="text-[10px] font-black w-4 text-center">{currentCategory}</span>
+                <button 
+                  onClick={() => {
+                    const cats: ('A' | 'B' | 'C')[] = ['A', 'B', 'C'];
+                    const idx = cats.indexOf(currentCategory);
+                    setCurrentCategory(cats[(idx + 1) % 3]);
+                  }}
+                  className="p-1 hover:bg-white rounded transition-all text-gray-500 hover:text-black"
+                >
+                  <ChevronRight size={14} />
+                </button>
+              </div>
+            </div>
             <label className="text-[10px] font-semibold tracking-wide border border-black rounded-full px-3 py-1 cursor-pointer hover:bg-black hover:text-white transition-colors">
               UPLOAD FILE
               <input type="file" multiple accept="image/*" className="hidden" onChange={handleFileUpload} />

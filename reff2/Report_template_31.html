@@ -1,0 +1,209 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <title>Architecture Portfolio Master Template - Final Unified Ver.</title>
+    <style>
+        /* [GLOBAL SETTINGS] A3 가로 사이즈 및 공통 변수 설정 */
+        @page { size: A3 landscape; margin: 0; }
+        :root {
+            --pad: 15mm;        /* 페이지 전체 사방 여백 */
+            --guide-c: rgba(0, 255, 255, 0.5); /* 가이드라인 색상 */
+            --border: #ccc;     /* 가이드 점선 색상 */
+            --gap: 10mm;        /* 요소 간 간격 */
+            --title-gap: 5mm;   /* 메인 타이틀과 서브 헤더 사이의 간격 */
+        }
+
+        body { margin: 0; padding: 0; background: #525659; font-family: 'Pretendard', sans-serif; color: #000; }
+        
+        /* [LAYOUT] 페이지 컨테이너 */
+        .page {
+            width: 420mm; height: 297mm; background: white; margin: 20px auto;
+            padding: var(--pad); box-sizing: border-box; position: relative;
+            display: flex; flex-direction: column; overflow: hidden;
+            box-shadow: 0 0 20px rgba(0,0,0,0.3);
+        }
+
+        /* [GUIDE LINE] 작업용 15mm 여백 가이드 */
+        .grid-master { position: absolute; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none; z-index: 1000; }
+        .g-line { position: absolute; background: var(--guide-c); }
+        .v { width: 1px; height: 100%; } .h { height: 1px; width: 100%; }
+
+        /* [CORE: EDITABLE] 입력 제한 로직 클래스 */
+        .editable { 
+            border: 1px dashed var(--border); 
+            outline: none; 
+            word-break: keep-all; 
+            position: relative; 
+            z-index: 10; 
+            overflow: hidden; 
+            display: block;
+            box-sizing: border-box;
+            padding: 0 !important;
+        }
+        .editable:focus { border: 1px solid #007bff; background: rgba(0,123,255,0.05); }
+        
+        /* [HEADER] 상단 공통 타이틀 및 회사명 */
+        .inner-header { display: flex; justify-content: space-between; align-items: flex-start; }
+        .main-title { 
+            font-size: 24pt; font-weight: 800; width: 300mm; 
+            max-height: 35mm; margin-bottom: var(--title-gap); 
+        }
+        .comp-name { 
+            font-size: 14pt; font-weight: 700; text-align: right; 
+            min-width: 60mm; border: 1px dashed var(--border);
+            padding: 0;
+        }
+
+        /* [SUB HEADER] 가변 타이틀 로직 (통일된 핵심 영역) */
+        .inner-sub-header { display: flex; justify-content: space-between; margin-bottom: 5mm; align-items: flex-start; }
+        .sub-title-box { font-size: 16pt; font-weight: 600; flex: 1; min-height: 30px; } /* 길이에 따라 늘어나는 로직 */
+        .index-indicator { width: 150mm; text-align: right; font-size: 12pt; }
+
+        /* [CONTENT] 이미지 및 설명 스타일 */
+        .page-desc-area { margin-bottom: 10mm; font-size: 11pt; border-bottom: 1px solid #eee; height: 48px; line-height: 1.5; }
+        .img-box { background: #f8f8f8; border: 1px dashed var(--border); display: flex; align-items: center; justify-content: center; cursor: pointer; width: 100%; height: 100%; flex-grow: 1; overflow: hidden; }
+        .img-box img { width: 100%; height: 100%; object-fit: cover; }
+        .desc-vertical { height: 3.2em; line-height: 1.6; margin-top: 5mm; width: 100%; }
+        .desc-horizontal { padding: 5mm !important; line-height: 1.6; flex: 0.64; height: 100%; border-bottom: 1px dashed #ccc; }
+
+        @media print {
+            body { background: none; } .page { margin: 0; box-shadow: none; }
+            .grid-master, .editable, .img-box { border: none !important; }
+        }
+    </style>
+</head>
+<body>
+
+    <div class="page">
+        <div class="grid-master"><div class="g-line v" style="left:15mm;"></div><div class="g-line v" style="right:15mm;"></div><div class="g-line h" style="top:15mm;"></div><div class="g-line h" style="bottom:15mm;"></div></div>
+        <div class="editable" contenteditable="true" style="text-align: center; font-size: 12pt; height: 20mm;">KEYWORD / KEYWORD / KEYWORD / KEYWORD</div>
+        <div style="flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: var(--gap);">
+            <div class="editable" contenteditable="true" style="font-size: 72pt; font-weight: 800; width: 350mm; height: 100mm; text-align: center;">Main Project Title</div>
+            <div class="editable" contenteditable="true" style="font-size: 28pt; text-align: center; line-height: 1.4; width: 350mm; height: 40mm;">Subtitle Content Here<br>Location & Concept</div>
+        </div>
+        <div style="display: flex; justify-content: space-between; align-items: flex-end; width: 100%; height: 20mm;">
+            <div class="editable" contenteditable="true" style="font-size: 14pt; min-width: 50mm;">2026.03.30</div>
+            <div class="editable comp-name" contenteditable="true">COMPANY NAME</div>
+        </div>
+    </div>
+
+    <div class="page">
+        <div class="grid-master"><div class="g-line v" style="left:15mm;"></div><div class="g-line v" style="right:15mm;"></div><div class="g-line h" style="top:15mm;"></div><div class="g-line h" style="bottom:15mm;"></div></div>
+        <div class="inner-header">
+            <div class="editable main-title" contenteditable="true" style="font-size: 60pt; height: 60mm; width: 300mm;">CONTENTS</div>
+            <div class="editable comp-name" contenteditable="true">COMPANY NAME</div>
+        </div>
+        <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 20mm 15mm; flex-grow: 1; align-content: end;">
+            <script>for(let i=1; i<=6; i++) document.write(`
+                <div style="display: flex; flex-direction: column; overflow: hidden; height: 60mm;">
+                    <div style="display: flex; align-items: baseline; gap: 5mm; margin-bottom: 3mm; flex-wrap: nowrap;">
+                        <span class="editable" contenteditable="true" style="font-size: 32pt; font-weight: 800; min-width: 15mm; display: inline-block; white-space: nowrap;">0${i}</span>
+                        <span class="editable" contenteditable="true" style="font-size: 18pt; font-weight: 700;">목차 제목을 입력하세요.</span>
+                    </div>
+                    <div class="editable" contenteditable="true" style="font-size: 11pt; color: #666; padding-left: 20mm; line-height:1.6; height: 40mm;">01 서브 목차 내용을 입력하세요.<br>02 서브 목차 내용을 입력하세요.</div>
+                </div>`)</script>
+        </div>
+    </div>
+
+    <script>
+    [{t:"페이지 타이틀을 입력하세요.", c:1}, {t:"페이지 타이틀을 입력하세요.", c:2}].forEach(p => {
+        let cols = "";
+        for(let i=1; i<=p.c; i++) cols += `<div style="display:flex; flex-direction:column; flex:1; height:100%;"><div class="img-box" onclick="u(this)"></div><div class="editable desc-vertical" contenteditable="true">이미지에 대한 설명을 입력해 주세요.</div></div>`;
+        document.write(`
+        <div class="page">
+            <div class="grid-master"><div class="g-line v" style="left:15mm;"></div><div class="g-line v" style="right:15mm;"></div><div class="g-line h" style="top:15mm;"></div><div class="g-line h" style="bottom:15mm;"></div></div>
+            <div class="inner-header">
+                <div class="editable main-title" contenteditable="true">Main Project Title</div>
+                <div class="editable comp-name" contenteditable="true">COMPANY NAME</div>
+            </div>
+            <div class="inner-sub-header">
+                <div class="editable sub-title-box" contenteditable="true">${p.t}</div>
+                <div class="editable index-indicator" contenteditable="true">00. 목차 : 서브 목차</div>
+            </div>
+            <div class="editable page-desc-area" contenteditable="true">페이지 전체 설명을 입력해 주세요.</div>
+            <div style="display:flex; gap:var(--gap); flex-grow:1; overflow:hidden;">${cols}</div>
+        </div>`);
+    });
+    </script>
+
+    <div class="page">
+        <div class="grid-master"><div class="g-line v" style="left:15mm;"></div><div class="g-line v" style="right:15mm;"></div><div class="g-line h" style="top:15mm;"></div><div class="g-line h" style="bottom:15mm;"></div></div>
+        <div class="inner-header">
+            <div class="editable main-title" contenteditable="true">Main Project Title</div>
+            <div class="editable comp-name" contenteditable="true">COMPANY NAME</div>
+        </div>
+        <div class="inner-sub-header">
+            <div class="editable sub-title-box" contenteditable="true">페이지 타이틀을 입력하세요.</div>
+            <div class="editable index-indicator" contenteditable="true">00. 목차 : 서브 목차</div>
+        </div>
+        <div class="editable page-desc-area" contenteditable="true">페이지 전체 설명을 입력해 주세요.</div>
+        <div style="display: flex; gap: var(--gap); flex-grow: 1; overflow: hidden;">
+            <div style="flex: 1; display: flex; flex-direction: column; height: 100%;">
+                <div class="img-box" onclick="u(this)"></div>
+                <div class="editable desc-vertical" contenteditable="true">이미지에 대한 설명을 입력해 주세요.</div>
+            </div>
+            <div style="flex: 1; display: flex; flex-direction: column; gap: var(--gap); height: 100%;">
+                <div style="display: flex; flex: 1; gap: var(--gap); overflow: hidden;">
+                    <div class="img-box" style="flex: 1.36;" onclick="u(this)"></div> 
+                    <div class="editable desc-horizontal" contenteditable="true" style="border-bottom: 1px dashed #ccc;">이미지에 대한 설명을 입력해 주세요.</div>
+                </div>
+                <div style="display: flex; flex: 1; gap: var(--gap); overflow: hidden;">
+                    <div class="img-box" style="flex: 1.36;" onclick="u(this)"></div>
+                    <div class="editable desc-horizontal" contenteditable="true" style="border-bottom: 1px dashed #ccc;">이미지에 대한 설명을 입력해 주세요.</div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="page">
+        <div class="grid-master"><div class="g-line v" style="left:15mm;"></div><div class="g-line v" style="right:15mm;"></div><div class="g-line h" style="top:15mm;"></div><div class="g-line h" style="bottom:15mm;"></div></div>
+        <div class="inner-header">
+            <div class="editable main-title" contenteditable="true">Main Project Title</div>
+            <div class="editable comp-name" contenteditable="true">COMPANY NAME</div>
+        </div>
+        <div class="inner-sub-header">
+            <div class="editable sub-title-box" contenteditable="true">페이지 타이틀을 입력하세요.</div>
+            <div class="editable index-indicator" contenteditable="true">00. 목차 : 서브 목차</div>
+        </div>
+        <div class="editable page-desc-area" contenteditable="true">페이지 전체 설명을 입력해 주세요.</div>
+        <div style="display: grid; grid-template-columns: 1fr 1fr; grid-template-rows: 1fr 1fr; gap: var(--gap); flex-grow: 1; overflow: hidden;">
+            <script>for(let i=1; i<=4; i++) document.write(`
+                <div style="display: flex; gap: var(--gap); align-items: stretch; overflow: hidden;">
+                    <div class="img-box" style="flex: 1.8;" onclick="u(this)"></div>
+                    <div class="editable desc-horizontal" contenteditable="true" style="border-bottom: 1px dashed #ccc;">이미지에 대한 설명을 입력해 주세요.</div>
+                </div>`)</script>
+        </div>
+    </div>
+
+    <input type="file" id="fi" style="display:none" accept="image/*">
+
+    <script>
+        /* [IMAGE UPLOAD LOGIC] */
+        let curr; function u(el){ curr=el; document.getElementById('fi').click(); }
+        document.getElementById('fi').onchange=(e)=>{
+            const f=e.target.files[0];
+            if(f){ const r=new FileReader(); r.onload=(ev)=>{ curr.innerHTML=`<img src="${ev.target.result}">`; }; r.readAsDataURL(f); }
+        }
+
+        /* [TEXT LIMIT LOGIC] */
+        document.querySelectorAll('.editable').forEach(box => {
+            box.addEventListener('keydown', function(e) {
+                const allowed = ['Backspace', 'Delete', 'ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown', 'Tab', 'Enter'];
+                if (allowed.includes(e.key)) return;
+                if (this.scrollHeight > this.clientHeight + 5) e.preventDefault();
+            });
+            box.addEventListener('input', function() {
+                while (this.scrollHeight > this.clientHeight + 5) {
+                    this.innerText = this.innerText.substring(0, this.innerText.length - 1);
+                    const range = document.createRange(); const sel = window.getSelection();
+                    if (this.childNodes.length > 0) {
+                        range.setStart(this.childNodes[0], this.innerText.length);
+                        range.collapse(true); sel.removeAllRanges(); sel.addRange(range);
+                    }
+                }
+            });
+        });
+    </script>
+</body>
+</html>
