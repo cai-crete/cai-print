@@ -18,7 +18,6 @@ import { TemplatePanel } from './components/templates/TemplatePanel';
 import { TemplateDrawing } from './components/templates/TemplateDrawing';
 import { TemplateVideo } from './components/templates/TemplateVideo';
 import { TemplateImage } from './components/templates/TemplateImage';
-import { create_transition_video } from './utils/replicateVideo';
 import PROMPT_ARCHITECT from './writer/PROMPT_건축작가.txt?raw';
 import REF_BOOK from './writer/REF.BOOK.txt?raw';
 import IMG_ANALYSIS_V1 from './writer/건축이미지분석기술서v1.txt?raw';
@@ -702,11 +701,12 @@ ${systemPrompt}
       }
     }
 
-    // 비디오 모드: 이미지 선택 여부와 무관하게 video-example.mp4 고정 출력
+    // 비디오 모드: 이미지 선택 여부와 무관하게 video-example-0.5x.mp4 고정 출력
     if (promptPurpose === 'video') {
       setIsGenerating(true);
       try {
-        const VIDEO_SRC = '/image library/V/video-example.mp4';
+        await new Promise(r => setTimeout(r, 5000)); // 5초 딜레이 추가
+        const VIDEO_SRC = '/image library/V/video-example-0.5x.mp4';
         const videoPage: import('./types').PageData = {
           id: 'page-0',
           type: 'video',
@@ -772,21 +772,11 @@ ${systemPrompt}
 
     let sourceImagesRaw = [...selectedImages];
 
+    // 선택된 이미지가 없을 경우, A 라이브러리의 전체 이미지를 무조건 100% 선택
     if (sourceImagesRaw.length === 0) {
       const baseImages = (libraryData['A'] && libraryData['A'].length > 0) ? libraryData['A'] : images;
       if (baseImages.length > 0) {
-        const allScored = await Promise.all(baseImages.map(async (libImg) => {
-          const img = libImg.src;
-          const tag = libImg.tag || '[TAG: DIA]';
-          let score = 20;
-          if (targetTags.includes(tag)) score = 100;
-          else if (['[TAG: BEV]', '[TAG: FPV]', '[TAG: LAV]', '[TAG: INT]'].includes(tag)) score = 80;
-          else if (['[TAG: PLN]', '[TAG: ELV]', '[TAG: SEC]', '[TAG: MST]'].includes(tag)) score = 60;
-          return { src: img, score };
-        }));
-        allScored.sort((a, b) => b.score - a.score);
-        let countToSelect = currentPurpose === 'panel' ? 10 : currentPurpose === 'video' ? 2 : 8;
-        const autoSelected = allScored.slice(0, countToSelect).map(i => i.src);
+        const autoSelected = baseImages.map(i => i.src);
         setSelectedImages(autoSelected);
         sourceImagesRaw = autoSelected;
       }
@@ -846,7 +836,7 @@ ${systemPrompt}
         else if (i === 1 && numPages > 1) pageStructures.push({ type: 'toc', textCount: 12, description: "TOC." });
         else {
           const type = bodyTypes[Math.max(0, i - 2) % bodyTypes.length];
-          pageStructures.push({ type, textCount: type === 'bodyA' ? 3 : type === 'bodyB' ? 4 : 5, description: `Body ${type.charAt(4)}.` });
+          pageStructures.push({ type, textCount: type === 'bodyA' ? 3 : type === 'bodyB' ? 4 : 4, description: `Body ${type.charAt(4)}.` });
         }
       }
     }
@@ -870,11 +860,11 @@ ${systemPrompt}
         } else if (p.type === 'toc') {
           return `Page ${i+1} [TOC]: title=표지와동일한프로젝트명, text[0~11]=목차항목(영문), text[3]="CRE-TE"`;
         } else if (p.type === 'bodyA') {
-          return `Page ${i+1} [BODY-A 이미지1개]: title=표지와동일한프로젝트명(절대변경금지), text[0]=페이지테마(30자이내), text[1]=학술요약(75자이내), text[2]=이미지스토리(3~4줄), text[3]="CRE-TE"`;
+          return `Page ${i+1} [BODY-A 이미지1개]: title=표지와동일한프로젝트명(절대변경금지), text[0]=페이지테마(30자이내), text[1]=학술요약(75자이내), text[2]=이미지스토리(3~4줄)`;
         } else if (p.type === 'bodyB') {
-          return `Page ${i+1} [BODY-B 이미지2개]: title=표지와동일한프로젝트명(절대변경금지), text[0]=페이지테마(30자이내), text[1]=학술요약(75자이내), text[2]=이미지1스토리(3~4줄), text[3]="CRE-TE"`;
+          return `Page ${i+1} [BODY-B 이미지2개]: title=표지와동일한프로젝트명(절대변경금지), text[0]=페이지테마(30자이내), text[1]=학술요약(75자이내), text[2]=이미지1스토리(3~4줄), text[3]=이미지2스토리(3~4줄)`;
         } else if (p.type === 'bodyC') {
-          return `Page ${i+1} [BODY-C 이미지3~4개]: title=표지와동일한프로젝트명(절대변경금지), text[0]=페이지테마(30자이내), text[1]=학술요약(75자이내), text[2]=이미지1스토리(3~4줄), text[3]="CRE-TE", text[4]=이미지2스토리(3~4줄)`;
+          return `Page ${i+1} [BODY-C 이미지3~4개]: title=표지와동일한프로젝트명(절대변경금지), text[0]=페이지테마(30자이내), text[1]=학술요약(75자이내), text[2]=이미지1스토리(3~4줄), text[3]=이미지2스토리(3~4줄)`;
         } else if (p.type === 'drawing') {
           return `Page ${i+1} [DRAWING 도면]: title=프로젝트명(5~16자 영문대문자), text[0]=NOTE(기술유의사항2~4줄), text[1]="CRE-TE", text[2]=엔지니어이니셜(예:K.H.KIM), text[3]="CRE-TE GROUP", text[4]=스케일(예:1/100), text[5]=도면번호(예:A-101), text[6]="${String(i+1).padStart(2,'0')} / ${pageStructures.length}", text[7]=파일명(예:PROJECT_PLN_01.DWG)`;
         } else if (p.type === 'panel') {
@@ -1169,23 +1159,23 @@ ${slotInstructions}
         }
         pdf.save(`${title || 'document'}.pdf`);
       } else if (exportFormat === 'video') {
-        // video-example.mp4 직접 다운로드
+        // video-example-0.5x.mp4 직접 다운로드
         try {
-          const VIDEO_SRC = '/image library/V/video-example.mp4';
+          const VIDEO_SRC = '/image library/V/video-example-0.5x.mp4';
           const res = await fetch(VIDEO_SRC);
           if (!res.ok) throw new Error('Video file not found');
           const blob = await res.blob();
           const url = URL.createObjectURL(blob);
           const a = document.createElement('a');
           a.href = url;
-          a.download = 'video-example.mp4';
+          a.download = 'video-example-0.5x.mp4';
           document.body.appendChild(a);
           a.click();
           document.body.removeChild(a);
           URL.revokeObjectURL(url);
         } catch (e) {
           console.error('MP4 download error:', e);
-          alert('영상 다운로드에 실패했습니다. public/image library/V/video-example.mp4 파일을 확인해 주세요.');
+          alert('영상 다운로드에 실패했습니다. public/image library/V/video-example-0.5x.mp4 파일을 확인해 주세요.');
         }
 
       } else {
@@ -1316,7 +1306,7 @@ ${slotInstructions}
         <div className="flex items-center gap-3">
           <h1 className="text-2xl font-bold tracking-tight text-gray-900">CAI CANVAS</h1>
           <div className="h-6 w-px bg-gray-300 mx-1" />
-          <span className="text-xl font-bold tracking-tight text-gray-800">No11. print</span>
+          <span className="text-xl font-bold tracking-tight text-gray-800">PRINT</span>
         </div>
       </header>
 
@@ -1524,9 +1514,7 @@ ${slotInstructions}
             ref={canvasAreaRef}
             className="flex-1 overflow-hidden flex items-center justify-center p-8 bg-[#f5f5f5]"
           >
-            {purpose === 'video' ? (
-              <MediaViewer images={selectedImages.length > 0 ? selectedImages : (images.length > 0 ? [images[0]] : [])} mode={purpose} />
-            ) : generatedPages.length > 0 ? (() => {
+            {generatedPages.length > 0 ? (() => {
               const currentPage = generatedPages[currentPageIndex];
               const isPanel = currentPage.type === 'panel';
               const isPortrait = isPanel && orientation === 'portrait';
@@ -1590,9 +1578,7 @@ ${slotInstructions}
           <div className="h-32 bg-white border-t border-gray-200 flex items-center px-4 shrink-0">
             <span className="text-sm font-medium mr-4 w-16">preview</span>
             <div className="flex-1 flex gap-4 overflow-x-auto pb-2 pt-2">
-              {purpose === 'video' ? (
-                <MediaTimelineEditor images={selectedImages} onReorder={setSelectedImages} />
-              ) : generatedPages.length > 0 ? (
+              {generatedPages.length > 0 ? (
                 generatedPages.map((page, idx) => {
                   const isPanel = page.type === 'panel';
                   const isPortrait = isPanel && orientation === 'portrait';
@@ -1659,7 +1645,7 @@ ${slotInstructions}
         )}>
           <div className="p-6 flex flex-col gap-8">
             <div className="flex justify-between items-center border-b border-gray-100 pb-3">
-              <span className="font-black text-base tracking-tight text-black uppercase">No11. print</span>
+              <span className="font-black text-base tracking-tight text-black uppercase">PRINT</span>
             </div>
 
             {/* AI 텍스트 자동생성 (Moved to top as requested) */}

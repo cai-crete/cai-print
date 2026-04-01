@@ -3,7 +3,7 @@ import React from 'react';
 import { PageData } from '../../types';
 
 export function TemplateVideo({ page }: { page: PageData, onTextSelection?: (pageId: string, idx: number) => void }) {
-    const videoSrc = page.content.images?.[0] || '/image library/V/video-example.mp4';
+    const videoSrc = page.content.images?.[0] || '/image library/V/video-example-0.5x.mp4';
 
     return (
         <div className="w-full h-full bg-black relative flex items-center justify-center overflow-hidden">

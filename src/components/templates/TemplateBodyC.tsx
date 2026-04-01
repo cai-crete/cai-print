@@ -57,10 +57,10 @@ export function TemplateBodyC({ page, pageIndex, purpose, onTextSelection, tocLa
                             </div>
                             <div
                                 className="desc-horizontal leading-relaxed flex-[0.64] h-full flex items-center border-b border-gray-200"
-                                style={{ padding: '0 5mm', fontSize: '11pt', ...getTextStyle(page.content.textStyles, loopIdx === 0 ? 4 : 4) }}
+                                style={{ padding: '0 5mm', fontSize: '11pt', ...getTextStyle(page.content.textStyles, 3) }}
                             >
-                                {/* loopIdx 0 → text[4], loopIdx 1 → text[4] (Body C는 text[4]를 우측 공용으로 사용) */}
-                                {text[4] || ""}
+                                {/* 우측 두 이미지 공통 설명 → text[3] */}
+                                {text[3] || ""}
                             </div>
                         </div>
                     ))}
