@@ -134,12 +134,18 @@ interface LibraryImage {
   dim?: { x: number; y: number };
 }
 
+const initialLibraryData = {
+  A: DEFAULT_IMAGES.filter(img => img.src.includes('/A/')),
+  B: DEFAULT_IMAGES.filter(img => img.src.includes('/B/')),
+  C: DEFAULT_IMAGES.filter(img => img.src.includes('/C/'))
+};
+
 export default function App() {
   const [projectType, setProjectType] = useState('auto');
   const [projectKeyword, setProjectKeyword] = useState('');
   const [title, setTitle] = useState('No11. print');
-  const [images, setImages] = useState<LibraryImage[]>(DEFAULT_IMAGES);
-  const [libraryData, setLibraryData] = useState<Record<string, LibraryImage[]>>({ A: [], B: [], C: [] });
+  const [libraryData, setLibraryData] = useState<Record<string, LibraryImage[]>>(initialLibraryData);
+  const [images, setImages] = useState<LibraryImage[]>(initialLibraryData['A']);
   const [currentCategory, setCurrentCategory] = useState<'A' | 'B' | 'C'>('A');
   const [historyImages, setHistoryImages] = useState<LibraryImage[]>([]);
   const [isLibraryOpen, setIsLibraryOpen] = useState(false);
@@ -1252,29 +1258,7 @@ ${slotInstructions}
 
         const zipBlob = await zip.generateAsync({ type: 'blob' });
 
-        // --- 로컬 서버 자동 저장 시도 (C:\Users\Crete_\Pictures\cai-print) ---
-        try {
-          const imageDatas = await Promise.all(
-            Array.from(pageElements).map(async (el) => {
-              const c = await html2canvas(el as HTMLElement, {
-                scale: (purpose === 'panel') ? 1 : 2,
-                useCORS: true,
-                scrollY: -window.scrollY,
-                scrollX: 0
-              });
-              return c.toDataURL(`image/${exportFormat}`, 0.95);
-            })
-          );
-
-          await fetch('/api/save-images', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ title, images: imageDatas, format: exportFormat })
-          });
-          console.log("Automatically saved to local folder via server.");
-        } catch (serverErr) {
-          console.error("Server-side save failed:", serverErr);
-        }
+        // --- Vercel 배포를 위해 로컬 서버 자동 저장(api/save-images) 렌더링 블록 삭제 및 ZIP 다운로드 우대 ---
 
         // Fallback to browser download (ZIP)
         try {
