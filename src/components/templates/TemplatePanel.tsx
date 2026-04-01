@@ -21,6 +21,9 @@ export function TemplatePanel({ page, orientation, onTextSelection }: { page: Pa
     const text5Ref = useRef<HTMLDivElement>(null);
 
     const textDeps = [page.content.text, page.content.title, orientation, page.id];
+
+    // 도면 태그 체크 헬퍼
+    const isDrawing = (tag: string) => ['[TAG: PLN]', '[TAG: ELV]', '[TAG: SEC]'].includes(tag);
     
     const getBaseSize = (index: number, def: number) => {
         const style = getTextStyle(page.content.textStyles, index);
@@ -44,7 +47,7 @@ export function TemplatePanel({ page, orientation, onTextSelection }: { page: Pa
                     gridTemplateRows: '75mm 60mm 115mm 25mm 195mm 281mm'
                 }}>
                 <div className="bg-gray-100 relative group overflow-hidden" style={{ gridColumn: '1 / 3', gridRow: '1 / 6' }}>
-                    {heroImg && <DraggableImage pageId={page.id} imageIndex={0} src={heroImg.src} />}
+                    {heroImg && <DraggableImage pageId={page.id} imageIndex={0} src={heroImg.src} objectFit={isDrawing(heroImg.tag || '') ? "contain" : "cover"} />}
                     {page.content.reasoning && (
                         <div className="absolute top-[8mm] left-[8mm] bg-white/95 px-[6mm] py-[4mm] font-medium text-gray-800 shadow-xl border-l-[4px] border-black opacity-0 group-hover:opacity-100 transition-opacity" style={{ fontSize: '19pt' }}>{page.content.reasoning}</div>
                     )}
@@ -145,10 +148,10 @@ export function TemplatePanel({ page, orientation, onTextSelection }: { page: Pa
                     </div>
                 </div>
 
-                <div className="bg-gray-100 overflow-hidden" style={{ gridColumn: '3', gridRow: '6' }}>{subImgs[0] && <DraggableImage pageId={page.id} imageIndex={1} src={subImgs[0].src} />}</div>
-                <div className="bg-gray-100 overflow-hidden" style={{ gridColumn: '4', gridRow: '6' }}>{subImgs[1] && <DraggableImage pageId={page.id} imageIndex={2} src={subImgs[1].src} />}</div>
-                <div className="bg-gray-100 overflow-hidden" style={{ gridColumn: '1', gridRow: '6' }}>{subImgs[2] && <DraggableImage pageId={page.id} imageIndex={3} src={subImgs[2].src} />}</div>
-                <div className="bg-gray-100 overflow-hidden" style={{ gridColumn: '2', gridRow: '6' }}>{subImgs[3] && <DraggableImage pageId={page.id} imageIndex={4} src={subImgs[3].src} />}</div>
+                <div className="bg-gray-100 overflow-hidden" style={{ gridColumn: '3', gridRow: '6' }}>{subImgs[0] && <DraggableImage pageId={page.id} imageIndex={1} src={subImgs[0].src} objectFit={isDrawing(subImgs[0].tag || '') ? "contain" : "cover"} />}</div>
+                <div className="bg-gray-100 overflow-hidden" style={{ gridColumn: '4', gridRow: '6' }}>{subImgs[1] && <DraggableImage pageId={page.id} imageIndex={2} src={subImgs[1].src} objectFit={isDrawing(subImgs[1].tag || '') ? "contain" : "cover"} />}</div>
+                <div className="bg-gray-100 overflow-hidden" style={{ gridColumn: '1', gridRow: '6' }}>{subImgs[2] && <DraggableImage pageId={page.id} imageIndex={3} src={subImgs[2].src} objectFit={isDrawing(subImgs[2].tag || '') ? "contain" : "cover"} />}</div>
+                <div className="bg-gray-100 overflow-hidden" style={{ gridColumn: '2', gridRow: '6' }}>{subImgs[3] && <DraggableImage pageId={page.id} imageIndex={4} src={subImgs[3].src} objectFit={isDrawing(subImgs[3].tag || '') ? "contain" : "cover"} />}</div>
             </div>
         );
     }
@@ -202,7 +205,7 @@ export function TemplatePanel({ page, orientation, onTextSelection }: { page: Pa
                 </div>
             </div>
 
-            <div className="bg-gray-100 overflow-hidden" style={{ gridColumn: '1 / 4', gridRow: '4 / 8' }}>{heroImg && <DraggableImage pageId={page.id} imageIndex={0} src={heroImg.src} />}</div>
+            <div className="bg-gray-100 overflow-hidden" style={{ gridColumn: '1 / 4', gridRow: '4 / 8' }}>{heroImg && <DraggableImage pageId={page.id} imageIndex={0} src={heroImg.src} objectFit={isDrawing(heroImg.tag || '') ? "contain" : "cover"} />}</div>
 
             <div className="text-cell overflow-hidden" style={{ gridColumn: '4', gridRow: '4' }}>
                 <div
@@ -260,13 +263,13 @@ export function TemplatePanel({ page, orientation, onTextSelection }: { page: Pa
                 </div>
             </div>
 
-            <div className="bg-gray-100 overflow-hidden" style={{ gridColumn: '1', gridRow: '8' }}>{subImgs[0] && <DraggableImage pageId={page.id} imageIndex={1} src={subImgs[0].src} />}</div>
-            <div className="bg-gray-100 overflow-hidden" style={{ gridColumn: '2', gridRow: '8' }}>{subImgs[1] && <DraggableImage pageId={page.id} imageIndex={2} src={subImgs[1].src} />}</div>
-            <div className="bg-gray-100 overflow-hidden" style={{ gridColumn: '3', gridRow: '8' }}>{subImgs[2] && <DraggableImage pageId={page.id} imageIndex={3} src={subImgs[2].src} />}</div>
-            <div className="bg-gray-100 overflow-hidden" style={{ gridColumn: '4', gridRow: '8' }}>{subImgs[3] && <DraggableImage pageId={page.id} imageIndex={4} src={subImgs[3].src} />}</div>
+            <div className="bg-gray-100 overflow-hidden" style={{ gridColumn: '1', gridRow: '8' }}>{subImgs[0] && <DraggableImage pageId={page.id} imageIndex={1} src={subImgs[0].src} objectFit={isDrawing(subImgs[0].tag || '') ? "contain" : "cover"} />}</div>
+            <div className="bg-gray-100 overflow-hidden" style={{ gridColumn: '2', gridRow: '8' }}>{subImgs[1] && <DraggableImage pageId={page.id} imageIndex={2} src={subImgs[1].src} objectFit={isDrawing(subImgs[1].tag || '') ? "contain" : "cover"} />}</div>
+            <div className="bg-gray-100 overflow-hidden" style={{ gridColumn: '3', gridRow: '8' }}>{subImgs[2] && <DraggableImage pageId={page.id} imageIndex={3} src={subImgs[2].src} objectFit={isDrawing(subImgs[2].tag || '') ? "contain" : "cover"} />}</div>
+            <div className="bg-gray-100 overflow-hidden" style={{ gridColumn: '4', gridRow: '8' }}>{subImgs[3] && <DraggableImage pageId={page.id} imageIndex={4} src={subImgs[3].src} objectFit={isDrawing(subImgs[3].tag || '') ? "contain" : "cover"} />}</div>
 
-            <div className="bg-gray-100 overflow-hidden" style={{ gridColumn: '1 / 3', gridRow: '9' }}>{subImgs[4] && <DraggableImage pageId={page.id} imageIndex={5} src={subImgs[4].src} />}</div>
-            <div className="bg-gray-100 overflow-hidden" style={{ gridColumn: '3 / 5', gridRow: '9' }}>{subImgs[5] && <DraggableImage pageId={page.id} imageIndex={6} src={subImgs[5].src} />}</div>
+            <div className="bg-gray-100 overflow-hidden" style={{ gridColumn: '1 / 3', gridRow: '9' }}>{subImgs[4] && <DraggableImage pageId={page.id} imageIndex={5} src={subImgs[4].src} objectFit={isDrawing(subImgs[4].tag || '') ? "contain" : "cover"} />}</div>
+            <div className="bg-gray-100 overflow-hidden" style={{ gridColumn: '3 / 5', gridRow: '9' }}>{subImgs[5] && <DraggableImage pageId={page.id} imageIndex={6} src={subImgs[5].src} objectFit={isDrawing(subImgs[5].tag || '') ? "contain" : "cover"} />}</div>
         </div>
     );
 }

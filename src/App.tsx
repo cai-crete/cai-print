@@ -702,22 +702,26 @@ ${systemPrompt}
       }
     }
 
-    // VEO 3.1 비디오 생성 분기
+    // 비디오 모드: 이미지 선택 여부와 무관하게 video-example.mp4 고정 출력
     if (promptPurpose === 'video') {
-      if (selectedImages.length === 0) {
-        alert('비디오를 만들 이미지를 좌측 라이브러리에서 선택해주세요.');
-        return;
-      }
       setIsGenerating(true);
       try {
-        const dim = await getImageDimensions(selectedImages[0]);
-        console.log(`[Veo 3.1] Generating video for resolution ${dim.width}x${dim.height}`);
-        const apiKey = (import.meta as any).env?.VITE_GEMINI_API_KEY || '';
-        await new Promise(resolve => setTimeout(resolve, 5000));
-        alert(`[VEO 3.1 생성을 완료했습니다]\n- 원본 이미지 해상도(${dim.width}x${dim.height}) 자동 인식 적용 완료.\n- API를 통해 생성된 영상이 준비되었습니다.`);
+        const VIDEO_SRC = '/image library/V/video-example.mp4';
+        const videoPage: import('./types').PageData = {
+          id: 'page-0',
+          type: 'video',
+          content: {
+            title: title || 'VIDEO',
+            text: [],
+            images: [VIDEO_SRC],
+            imageDimensions: [{ width: 1920, height: 1080 }],
+          }
+        };
+        setGeneratedPages([videoPage]);
+        setCurrentPageIndex(0);
       } catch (e) {
-        console.error('Veo API Error:', e);
-        alert('비디오 생성 중 오류가 발생했습니다.');
+        console.error('Video page creation error:', e);
+        alert('비디오 페이지 생성 중 오류가 발생했습니다.');
       } finally {
         setIsGenerating(false);
       }
@@ -995,15 +999,16 @@ ${slotInstructions}
       } else {
         const result = []; const dimsResult = []; const tagsResult = []; const titlesResult = [];
         for (let i = 0; i < count; i++) {
-          const it = imgPool.shift() || drawingAnalyzedImages[i % drawingAnalyzedImages.length];
+          const it = imgPool.shift(); // 이미 사용된 이미지는 제거됨 (중복 방지)
           result.push(it?.src || '');
           dimsResult.push(it?.dim || { width: 1, height: 1 });
           tagsResult.push(it?.tag || '');
           titlesResult.push(it?.title || '');
         }
-        if (imgPool.length === 0) imgPool = [...drawingAnalyzedImages];
+        // [중요] imgPool을 다시 채우지 않음 → 이미지가 없으면 빈 슬롯 유지
         return { images: result, dims: dimsResult, tags: tagsResult, titles: titlesResult };
       }
+
     };
 
     const newPages: PageData[] = [];
@@ -1164,7 +1169,25 @@ ${slotInstructions}
         }
         pdf.save(`${title || 'document'}.pdf`);
       } else if (exportFormat === 'video') {
-        alert('비디오 버전 출력 서비스 준비 중입니다. 현재는 이미지 시퀀스로만 내보낼 수 있습니다.');
+        // video-example.mp4 직접 다운로드
+        try {
+          const VIDEO_SRC = '/image library/V/video-example.mp4';
+          const res = await fetch(VIDEO_SRC);
+          if (!res.ok) throw new Error('Video file not found');
+          const blob = await res.blob();
+          const url = URL.createObjectURL(blob);
+          const a = document.createElement('a');
+          a.href = url;
+          a.download = 'video-example.mp4';
+          document.body.appendChild(a);
+          a.click();
+          document.body.removeChild(a);
+          URL.revokeObjectURL(url);
+        } catch (e) {
+          console.error('MP4 download error:', e);
+          alert('영상 다운로드에 실패했습니다. public/image library/V/video-example.mp4 파일을 확인해 주세요.');
+        }
+
       } else {
         // File System Access API를 활용한 로컬 폴더 직접 저장 (압축 없음)
         if ('showDirectoryPicker' in window) {
