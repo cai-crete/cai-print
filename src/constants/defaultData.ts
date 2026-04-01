@@ -14,6 +14,7 @@ export const DEFAULT_IMAGES = [
     { src: "/image library/A/eye level view -1.jpg", type: "Eye level view", tag: "[TAG: FPV]" },
     { src: "/image library/C/eye level view -1.jpg", type: "Eye level view", tag: "[TAG: FPV]" },
     { src: "/image library/A/low angle view -1.jpeg", type: "Low angle view", tag: "[TAG: LAV]" },
+    { src: "/image library/A/low angle view -2.png", type: "Low angle view", tag: "[TAG: LAV]" },
     { src: "/image library/A/low angle view -3.png", type: "Low angle view", tag: "[TAG: LAV]" },
     { src: "/image library/B/low angle view -1.jpg", type: "Low angle view", tag: "[TAG: LAV]" },
 
@@ -43,7 +44,6 @@ export const DEFAULT_IMAGES = [
     { src: "/image library/B/diagram -1.png", type: "Diagram", tag: "[TAG: DIA]" },
     { src: "/image library/B/diagram -2.png", type: "Diagram", tag: "[TAG: DIA]" },
     { src: "/image library/B/diagram -3.jpg", type: "Diagram", tag: "[TAG: DIA]" },
-    { src: "/image library/B/diagram -4.png", type: "Diagram", tag: "[TAG: DIA]" },
     { src: "/image library/B/diagram -5.png", type: "Diagram", tag: "[TAG: DIA]" },
     { src: "/image library/C/diagram -1.jpg", type: "Diagram", tag: "[TAG: DIA]" },
     { src: "/image library/C/diagram -2.jpg", type: "Diagram", tag: "[TAG: DIA]" },
