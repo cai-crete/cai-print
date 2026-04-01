@@ -338,8 +338,21 @@ export default function App() {
         const targetPage = { ...newPages[targetPageIndex] };
         const targetContent = { ...targetPage.content };
         const targetImages = [...(targetContent.images || [])];
+        const drawingTags = ['[TAG: PLN]', '[TAG: ELV]', '[TAG: SEC]'];
+
+        // Helper to check if image is allowed in drawing
+        const isAllowedInDrawing = (src: string) => {
+          if (!src) return true;
+          const libImg = [...libraryData.A, ...libraryData.B, ...libraryData.C, ...images].find(i => i.src === src);
+          return libImg ? drawingTags.includes(libImg.tag || '') : false;
+        };
 
         if (source.source === 'library') {
+          // Check drawing restriction
+          if (targetPage.type === 'drawing' && !isAllowedInDrawing(source.imgSrc)) {
+            alert('도면집에는 평면, 입면, 단면(Floor plan, Elevation, Section) 이미지인 것만 삽입할 수 있습니다.');
+            return prevPages;
+          }
           // Replace target image with library image
           targetImages[target.imageIndex] = source.imgSrc;
           targetContent.images = targetImages;
@@ -349,6 +362,21 @@ export default function App() {
           // Swap target image with source image
           const sourcePageIndex = newPages.findIndex(p => p.id === source.pageId);
           if (sourcePageIndex === -1) return prevPages;
+
+          const sourcePage = { ...newPages[sourcePageIndex] };
+          const sourceContent = { ...sourcePage.content };
+          const sourceImages = [...(sourceContent.images || [])];
+          const sourceImgSrc = sourceImages[source.imageIndex];
+
+          // Check drawing restriction for both ends if necessary
+          if (targetPage.type === 'drawing' && !isAllowedInDrawing(sourceImgSrc)) {
+             alert('도면집에는 평면, 입면, 단면(Floor plan, Elevation, Section) 이미지만 삽입할 수 있습니다.');
+             return prevPages;
+          }
+          if (sourcePage.type === 'drawing' && !isAllowedInDrawing(targetImages[target.imageIndex])) {
+             alert('도면집에는 평면, 입면, 단면(Floor plan, Elevation, Section) 이미지만 삽입할 수 있습니다.');
+             return prevPages;
+          }
 
           if (sourcePageIndex === targetPageIndex) {
             // Swap within the same page
@@ -361,10 +389,6 @@ export default function App() {
             newPages[targetPageIndex] = targetPage;
           } else {
             // Swap across different pages
-            const sourcePage = { ...newPages[sourcePageIndex] };
-            const sourceContent = { ...sourcePage.content };
-            const sourceImages = [...(sourceContent.images || [])];
-
             const temp = targetImages[target.imageIndex];
             targetImages[target.imageIndex] = sourceImages[source.imageIndex];
             sourceImages[source.imageIndex] = temp;
@@ -459,7 +483,114 @@ export default function App() {
       };
       const purposeDescription = purposeLabel[currentPurposeForPrompt] || currentPurposeForPrompt;
 
-      // [writer 프로토콜] 최우선 지시사항 및 지식 베이스 통합
+      // ========================================================
+      // [SYSTEM PROMPT] 목적별 완전 분리형 프롬프트 구성
+      // ========================================================
+      const todayDate = new Date().toLocaleDateString('ko-KR', { year: 'numeric', month: '2-digit', day: '2-digit' }).replace(/\s/g, '').replace(/\.$/, '');
+
+      // 영상 모드: 텍스트 생성 완전 차단
+      if (currentPurposeForPrompt === 'video') {
+        setTextInput('');
+        setIsGeneratingText(false);
+        return null;
+      }
+
+      // --------------- 목적별 프롬프트 분기 ---------------
+      let purposeSpecificInstructions = '';
+
+      if (currentPurposeForPrompt === 'report') {
+        purposeSpecificInstructions = `
+# 문서 목적: 건축 보고서 (Report) — A3 Landscape
+당신은 대한민국 최고의 건축 비평 작가입니다. 아래 규칙을 절대 어기지 마십시오.
+
+## 절대 금지 사항
+- 'No11. print', 'page 01', 'PAGE', 'P.01' 등 시스템/페이지 번호 텍스트를 절대 포함하지 마십시오.
+- 'CRE-TE'를 일반 텍스트 내용에 포함하지 마십시오. (기업명 슬롯 전용)
+
+## 생성 페이지 수: ${currentNumPages}
+
+## 각 페이지별 텍스트 슬롯 엄격 정의
+
+### [페이지 1: 표지 - cover]
+- title: 전체 프로젝트 명칭. 이미지에서 파악한 건축 개념을 기반으로 한 강렬한 영문 제목 (3~6단어).
+- text[0]: 28pt 서브타이틀 - 프로젝트 위치 및 핵심 공간 철학 (30자 이내, 영문).
+- text[1]: 날짜 - "${todayDate}"
+- text[2]: 12pt 키워드 바 - 분석한 핵심 건축 키워드 4개를 ' / ' 로 구분 (예: URBAN / GRID / VOID / LIGHT).
+- text[3]: 기업명 - 반드시 "CRE-TE" 고정.
+
+### [페이지 2: 목차 - toc] (${currentNumPages} > 1 인 경우에만 생성)
+- title: 표지와 동일한 프로젝트명 (반드시 일치).
+- text[0]: 목차 챕터 1 제목 (예: 01 INTRODUCTION)
+- text[1]: 목차 챕터 1 소항목 (2줄, 영문)
+- text[2] ~ text[11]: 나머지 목차 항목 반복 (챕터 2~6까지, 공백으로 채워도 됨)
+- text[3]: 기업명 - 반드시 "CRE-TE" 고정.
+
+### [페이지 3~N: 내지 Body A / B / C]
+(페이지 수에 따라 bodyA, bodyB, bodyC 순환)
+
+**모든 내지 공통:**
+- title: 반드시 표지(cover)의 title과 동일한 텍스트 (헤더 고정).
+- text[3]: 기업명 - 반드시 "CRE-TE" 고정.
+
+**Body A (이미지 1개):**
+- text[0]: 16pt 페이지 테마 - 이 페이지의 건축 주제 (예: "Site Topology", "Massing Strategy"). 30자 이내.
+- text[1]: 11pt 페이지 요약 - 페이지 전체 내용의 학술적 초록. 최대 75자.
+- text[2]: 11pt 이미지 스토리 - 이미지의 물성, 빛, 구조를 비평적 시선으로 설명. 3~4줄.
+
+**Body B (이미지 2개):**
+- text[0]: 16pt 페이지 테마 (30자 이내)
+- text[1]: 11pt 페이지 요약 (최대 75자)
+- text[2]: 11pt 이미지 1 스토리 (3~4줄)
+- text[3]: 기업명 - 반드시 "CRE-TE" 고정.
+
+**Body C (이미지 3~4개):**
+- text[0]: 16pt 페이지 테마 (30자 이내)
+- text[1]: 11pt 페이지 요약 (최대 75자)
+- text[2]: 11pt 이미지 1 스토리 (3~4줄)
+- text[3]: 기업명 - 반드시 "CRE-TE" 고정.
+- text[4]: 11pt 이미지 2 스토리 (3~4줄)
+`;
+      } else if (currentPurposeForPrompt === 'drawing') {
+        purposeSpecificInstructions = `
+# 문서 목적: 건축 도면집 (Drawing) — A3 Landscape, 도각(Title Block) 포함
+당신은 건축사무소의 도면 담당 실무자입니다. 수사적 표현을 완전히 배제하고 기술적 정확성만을 추구합니다.
+
+## 절대 금지 사항
+- 'No11. print', 'PAGE', 'page' 등 시스템/페이지 번호 텍스트를 절대 포함하지 마십시오.
+
+## 각 도면 페이지의 텍스트 슬롯 (8개 고정)
+각 페이지마다 아래 8개 슬롯을 생성하십시오 (이미지의 종류를 분석하여 채울 것):
+
+- title: 프로젝트명 — **반드시 5~16자 이내의 영문 대문자** (예: "CRE-TE COMPLEX", "URBAN HUB"). 절대 이 범위를 벗어나지 마십시오.
+- text[0] (NOTE): 이미지 유형에 맞는 기술적 유의사항, 2~4줄. (예: "1. ALL DIMENSIONS IN MM.\n2. VERIFY ALL CONDITIONS ON SITE.\n3. DO NOT SCALE DRAWINGS.")
+- text[1] (DESIGNED BY): 반드시 "CRE-TE" 고정. 다른 값 절대 불가.
+- text[2] (ENGINEER): 가상의 한국인 엔지니어 성명 이니셜 (예: "K.H. KIM", "J.W. PARK", "S.Y. LEE")
+- text[3] (APPROVED BY): 반드시 "CRE-TE GROUP" 고정.
+- text[4] (SCALE): 이미지 유형에 따른 도면 척도. 평면·입면·단면은 "1/100" 또는 "1/200", 배치도는 "1/500", 확인 불가 시 "N.T.S".
+- text[5] (DRAWING NO.): 이미지 유형에 따른 건축 도면 번호. 평면은 "A-1xx", 입면은 "A-2xx", 단면은 "A-3xx" 형식.
+- text[6] (SHEET NO.): 전체 시트 중 순번. "01 / ${currentNumPages}" 형태 (페이지마다 01, 02... 증가).
+- text[7] (FILE NAME): 가상의 CAD 파일명. 프로젝트명을 기반으로 "PROJECT_PLN_01.DWG" 형태.
+`;
+      } else if (currentPurposeForPrompt === 'panel') {
+        purposeSpecificInstructions = `
+# 문서 목적: 전시 판넬 (Panel) — A0 대형 판넬 (가로형 1189mm x 841mm, 세로형 841mm x 1189mm)
+당신은 전시 기획자이자 건축 비평 작가입니다. 감성적이고 공간적인 언어로 관람자에게 강렬한 인상을 남겨야 합니다.
+
+## 절대 금지 사항
+- 'No11. print', 'PAGE', 'page' 등 시스템 텍스트를 절대 포함하지 마십시오.
+
+## 전시 판넬 텍스트 슬롯 (이미지를 분석하여 공간감 있게 작성)
+
+- title: 140pt 대형 메인 타이틀 — 프로젝트의 핵심 정체성을 담은 3단어 이내의 강렬한 영문 제목.
+- text[0] (Subtitle): 90pt 서브타이틀 — 타이틀을 보완하는 공간 철학 문구. **30자 이내로 강제**.
+- text[1] (Main Body): 30pt 본문 — 프로젝트의 공간적 서사와 사용자 경험. 건축적 산책로(Promenade) 개념으로 풍성하게 서술. 200~350자.
+- text[2] (Theme Heading A): 35pt 소제목 A — 공간의 특정 테마 (예: "Urban Void"). **반드시 10자 이내로 강제**.
+- text[3] (Theme Body A): 20pt 소제목 A 설명 — 해당 테마의 디자인 의도 상세 설명. 100~180자.
+- text[4] (Theme Heading B): 35pt 소제목 B — 다른 공간 테마 (예: "Light Path"). **반드시 10자 이내로 강제**.
+- text[5] (Theme Body B): 20pt 소제목 B 설명 — 해당 테마의 디자인 의도 상세 설명. 100~180자.
+`;
+      }
+
       const systemPrompt = `
 ${PROMPT_ARCHITECT}
 
@@ -476,41 +607,15 @@ ${LANGUAGE_TECH_V1}
 ## ERROR_CORRECTION (오류 교정 원칙)
 ${ERROR_CORRECTION}
 
-**문서 목적: ${purposeDescription}**
+${purposeSpecificInstructions}
 
-# BRANDING ISOLATION (브랜딩 격리 - 매우 중요)
-- 'No11. print'는 이 프로그램의 이름이자 로고(Logo)일 뿐입니다.
-- **생성하는 문서의 대제목, 소제목, 본문 텍스트 어느 곳에도 'No11. print'라는 단어를 포함하지 마십시오.**
-- 만약 사용자 입력에 제목이 없다면, 이미지에서 추출한 핵심 건축 개념(예: 'Urban Grid', 'Nature-inspired Space')을 제목으로 사용하십시오.
-
-# REPORT_TEMPLATE_31 HIERARCHY (템플릿 위계 - 핵심)
-각 페이지는 다음의 4단계 위계에 따라 텍스트를 구성해야 합니다:
-1. **메인 타이틀 (Main Title)**: 전체 프로젝트명 (모든 내지 상단 고정).
-2. **서브 타이틀 (Sub Title)**: 해당 페이지의 디자인 테마 또는 주제 (예: 'Massing Process', 'Internal Void').
-3. **페이지 요약 (Page Summary)**: 해당 페이지 전체의 핵심 내용을 설명하는 상단 가로 긴 문장.
-4. **이미지 스토리 (Image Story)**: 개별 이미지에 대한 기술적/미적 상세 설명.
-
-# FILL-ALL POLICY & EXCEPTIONS (전체 채우기 원칙 및 예외)
-- **원칙**: 문서 내 모든 텍스트 박스(text[0] ~ text[n])는 빈칸 없이 풍성하게 채워야 합니다.
-- **예외**: 특정 이미지 슬롯에 이미지가 배정되지 않은 경우(null/empty), 해당 이미지에 대한 설명('Image Story')만은 반드시 **빈 문자열("")**로 반환하십시오.
-- **매핑 가이드**:
-  - **Body A**: text[2] (이미지 1의 스토리)
-  - **Body B**: text[2] (이미지 1의 스토리), text[3] (이미지 2의 스토리)
-  - **Body C**: text[2] (이미지 1의 스토리), text[3] (이미지 2의 스토리), text[4] (이미지 3의 스토리)
-
-# PHYSICAL CONSTRAINTS (물리적 제약 조건)
-1. **표지 (TemplateCover)**:
-   - 메인 타이틀: 72pt, 강력한 건축적 어조.
-   - 서브 타이틀 (text[0]): 28pt, 위치 및 핵심 컨셉 설명.
-   - 키워드 (text[2]): 12pt, 전체 맥락을 분석한 **핵심 키워드 4개** (예: URBAN / GRID / VOID / NATURE).
-   - 기업명 (text[3]): 사용자가 편집할 'COMPANY NAME'.
-2. **페이지 요약 (page-desc-area, 11pt)**: 가로 400mm 영역. 최대 2줄(약 80자)로 요체만 작성.
-3. **이미지 스토리 (desc-vertical/desc-horizontal, 11pt)**: 가로/세로 영역에 맞춰 최대 3~5줄 이내로 작성.
-
-# DYNAMIC DATA (동적 데이터)
-- **현재 날짜**: ${new Date().toLocaleDateString('ko-KR', { year: 'numeric', month: '2-digit', day: '2-digit' }).replace(/\s/g, '').replace(/\.$/, '')}
-- 위의 현재 날짜를 표지('text[1]')에 기본 적용하십시오.
+# 핵심 실행 규칙 (엄격하게 준수)
+1. 모든 'title' 필드는 표지(cover)에서 생성된 타이틀과 완벽히 동일해야 합니다.
+2. 'No11. print', 'page', 'PAGE' 등의 시스템 문자열을 어떤 슬롯에도 포함하지 마십시오.
+3. 각 슬롯의 지정된 글자 수 제한을 반드시 준수하십시오.
+4. 이미지를 최우선으로 분석하고, 텍스트 입력이 없는 경우 이미지에서 추출한 건축 개념으로 모든 슬롯을 채우십시오.
 `;
+
 
       const promptText = `
 ${systemPrompt}
@@ -745,12 +850,54 @@ ${systemPrompt}
     let generatedContent: any[] = [];
     try {
       const ai = new GoogleGenAI({ apiKey: (import.meta as any).env?.VITE_GEMINI_API_KEY || process.env.GEMINI_API_KEY || '' });
+      const todayDate = new Date().toLocaleDateString('ko-KR', { year: 'numeric', month: '2-digit', day: '2-digit' }).replace(/\s/g, '').replace(/\.$/, '');
+
+      // 도면집: textCount를 8로 고정 (실제 슬롯 수와 일치)
+      const adjustedStructures = pageStructures.map(p => {
+        if (p.type === 'drawing') return { ...p, textCount: 8 };
+        if (p.type === 'panel') return { ...p, textCount: 6 };
+        return p;
+      });
+
+      // 슬롯별 지시사항 동적 생성
+      const slotInstructions = adjustedStructures.map((p, i) => {
+        if (p.type === 'cover') {
+          return `Page ${i+1} [COVER]: title=프로젝트명(3~6단어 영문), text[0]=서브타이틀(30자이내), text[1]="${todayDate}", text[2]=키워드4개(예:URBAN/GRID/VOID/LIGHT), text[3]="CRE-TE"`;
+        } else if (p.type === 'toc') {
+          return `Page ${i+1} [TOC]: title=표지와동일한프로젝트명, text[0~11]=목차항목(영문), text[3]="CRE-TE"`;
+        } else if (p.type === 'bodyA') {
+          return `Page ${i+1} [BODY-A 이미지1개]: title=표지와동일한프로젝트명(절대변경금지), text[0]=페이지테마(30자이내), text[1]=학술요약(75자이내), text[2]=이미지스토리(3~4줄), text[3]="CRE-TE"`;
+        } else if (p.type === 'bodyB') {
+          return `Page ${i+1} [BODY-B 이미지2개]: title=표지와동일한프로젝트명(절대변경금지), text[0]=페이지테마(30자이내), text[1]=학술요약(75자이내), text[2]=이미지1스토리(3~4줄), text[3]="CRE-TE"`;
+        } else if (p.type === 'bodyC') {
+          return `Page ${i+1} [BODY-C 이미지3~4개]: title=표지와동일한프로젝트명(절대변경금지), text[0]=페이지테마(30자이내), text[1]=학술요약(75자이내), text[2]=이미지1스토리(3~4줄), text[3]="CRE-TE", text[4]=이미지2스토리(3~4줄)`;
+        } else if (p.type === 'drawing') {
+          return `Page ${i+1} [DRAWING 도면]: title=프로젝트명(5~16자 영문대문자), text[0]=NOTE(기술유의사항2~4줄), text[1]="CRE-TE", text[2]=엔지니어이니셜(예:K.H.KIM), text[3]="CRE-TE GROUP", text[4]=스케일(예:1/100), text[5]=도면번호(예:A-101), text[6]="${String(i+1).padStart(2,'0')} / ${pageStructures.length}", text[7]=파일명(예:PROJECT_PLN_01.DWG)`;
+        } else if (p.type === 'panel') {
+          return `Page ${i+1} [PANEL 대형판넬]: title=메인타이틀(3단어이내 영문), text[0]=서브타이틀(30자이내), text[1]=본문서사(200~350자), text[2]=소제목A(10자이내 필수), text[3]=소제목A설명(100~180자), text[4]=소제목B(10자이내 필수), text[5]=소제목B설명(100~180자)`;
+        }
+        return `Page ${i+1} [${p.type}]: title=프로젝트명, ${Array.from({length: p.textCount}, (_, k) => `text[${k}]=내용`).join(', ')}`;
+      }).join('\n');
+
       const prompt = `
 ${PROMPT_ARCHITECT}
-# TASK
-Generate a document with ${pageStructures.length} pages for ${currentPurpose}. Project title: "${currentTitle}".
-Input text: """${currentTextInput || "Professional architectural placeholder."}"""
-${pageStructures.map((p, i) => `Page ${i + 1} (${p.type}): ${p.textCount} text fields.`).join('\n')}
+
+# STRICT JSON GENERATION TASK
+이미지를 분석하고 아래 슬롯 지시사항에 따라 JSON 배열을 정확하게 생성하십시오.
+
+## 절대 금지
+- 'No11. print', 'page', 'PAGE', 'P.01' 등 시스템 텍스트를 어떤 슬롯에도 포함하지 마십시오.
+- title 필드에 표지와 다른 텍스트를 넣지 마십시오 (cover 생성 후 동일 텍스트 복사).
+- 글자 수 제한을 초과하지 마십시오.
+
+## 입력 텍스트 (참고용)
+${currentTextInput || "Professional architectural placeholder."}
+
+## 슬롯별 생성 지시사항 (총 ${adjustedStructures.length}페이지)
+${slotInstructions}
+
+반드시 ${adjustedStructures.length}개의 JSON 객체를 배열로 반환하십시오.
+각 객체: { "title": string, "text": string[] }
 `;
       const response = await ai.models.generateContent({
         model: "gemini-3-flash-preview",
@@ -768,17 +915,34 @@ ${pageStructures.map((p, i) => `Page ${i + 1} (${p.type}): ${p.textCount} text f
         }
       });
       generatedContent = JSON.parse(response.text || "[]");
+
+      // [타이틀 통일] 표지(cover)의 타이틀을 모든 페이지에 동기화
+      const coverTitle = generatedContent[0]?.title || currentTitle;
+      generatedContent = generatedContent.map((c, i) => ({
+        ...c,
+        title: i === 0 ? coverTitle : coverTitle  // 전 페이지 동일 타이틀 강제
+      }));
+
     } catch (error) {
       console.error("AI Error:", error);
-      let textChunks = textInput.split('\n\n').filter(t => t.trim().length > 0);
+      const textChunks = textInput.split('\n\n').filter(t => t.trim().length > 0);
       let textIdx = 0;
       generatedContent = pageStructures.map((p, i) => ({
-        title: p.type === 'cover' ? currentTitle : `Topic ${i}`,
-        text: Array.from({ length: p.textCount }, () => textChunks[textIdx++ % textChunks.length] || 'Placeholder')
+        title: currentTitle,  // 폴백도 동일 타이틀 적용
+        text: Array.from({ length: p.type === 'drawing' ? 8 : p.type === 'panel' ? 6 : p.textCount }, () =>
+          textChunks[textIdx++ % Math.max(1, textChunks.length)] || '')
       }));
     }
 
-    let imgPool = [...analyzedImages];
+
+    // --- Drawing Restriction: Filter only PLN, ELV, SEC tags for drawing purpose ---
+    const drawingTags = ['[TAG: PLN]', '[TAG: ELV]', '[TAG: SEC]'];
+    const drawingAnalyzedImages = currentPurpose === 'drawing' 
+      ? analyzedImages.filter(i => drawingTags.includes(i.tag))
+      : analyzedImages;
+
+    let imgPool = [...drawingAnalyzedImages];
+
     const getNextImagesIntelligently = (count: number, type: string) => {
       if (type === 'panel') {
         const result: string[] = [];
@@ -826,18 +990,18 @@ ${pageStructures.map((p, i) => `Page ${i + 1} (${p.type}): ${p.textCount} text f
           }
         }
 
-        if (imgPool.length === 0) imgPool = [...analyzedImages];
+        if (imgPool.length === 0) imgPool = [...drawingAnalyzedImages];
         return { images: result, dims: dimsResult, tags: tagsResult, titles: titlesResult };
       } else {
         const result = []; const dimsResult = []; const tagsResult = []; const titlesResult = [];
         for (let i = 0; i < count; i++) {
-          const it = imgPool.shift() || analyzedImages[i % analyzedImages.length];
+          const it = imgPool.shift() || drawingAnalyzedImages[i % drawingAnalyzedImages.length];
           result.push(it?.src || '');
           dimsResult.push(it?.dim || { width: 1, height: 1 });
           tagsResult.push(it?.tag || '');
           titlesResult.push(it?.title || '');
         }
-        if (imgPool.length === 0) imgPool = [...analyzedImages];
+        if (imgPool.length === 0) imgPool = [...drawingAnalyzedImages];
         return { images: result, dims: dimsResult, tags: tagsResult, titles: titlesResult };
       }
     };
@@ -1676,7 +1840,7 @@ function FloatingToolbar({
 
   return (
     <div
-      className="ai-floating-toolbar fixed bg-white border border-gray-200 shadow-[0_15px_50px_rgba(0,0,0,0.2)] rounded-3xl p-5 flex gap-5 items-center z-[9999] animate-in fade-in zoom-in duration-300 backdrop-blur-xl bg-white/90"
+      className="ai-floating-toolbar fixed border border-gray-200 shadow-[0_15px_50px_rgba(0,0,0,0.2)] rounded-3xl p-5 flex gap-5 items-center z-9999 animate-in fade-in zoom-in duration-300 backdrop-blur-xl bg-white/90"
       style={{
         left: `${info.rect.left + info.rect.width / 2}px`,
         top: `${info.rect.top - 100}px`,
@@ -1700,7 +1864,7 @@ function FloatingToolbar({
           {fonts.map(f => <option key={f} value={f}>{f}</option>)}
         </select>
       </div>
-      <div className="w-[1px] h-8 bg-gray-100 mx-1" />
+      <div className="w-px h-8 bg-gray-100 mx-1" />
       <div className="flex flex-col gap-1">
         <label className="text-[9px] font-black text-gray-400 uppercase tracking-tight">Size</label>
         <div className="flex items-center gap-2">

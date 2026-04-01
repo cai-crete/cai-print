@@ -61,37 +61,47 @@ app.get('/api/list-images', (req, res) => {
             const dirPath = path.join(LIB_DIR, cat);
             if (fs.existsSync(dirPath)) {
                 const files = fs.readdirSync(dirPath);
-                result[cat] = files
+                const items = files
                     .filter(file => /\.(png|jpe?g|webp)$/i.test(file))
                     .map(file => {
                         const lowFile = file.toLowerCase();
                         let type = 'Image';
                         let tag = '[TAG: DIA]';
+                        let priority = 99;
 
-                        if (lowFile.includes('bird') || lowFile.includes('view') && (lowFile.includes('eye') || lowFile.includes('birdseye')) || lowFile.includes('조감도')) {
-                            type = 'Bird\'s Eye View'; tag = '[TAG: BEV]';
-                        } else if (lowFile.includes('interior') || lowFile.includes('실내') || lowFile.includes('lobby') || lowFile.includes('room')) {
-                            type = 'Interior'; tag = '[TAG: INT]';
-                        } else if (lowFile.includes('perspective') || lowFile.includes('view') || lowFile.includes('투시도')) {
-                            type = 'Perspective'; tag = '[TAG: FPV]';
-                        } else if (lowFile.includes('section') || lowFile.includes('단면')) {
-                            type = 'Section'; tag = '[TAG: SEC]';
-                        } else if (lowFile.includes('elevation') || lowFile.includes('입면')) {
-                            type = 'Elevation'; tag = '[TAG: ELV]';
-                        } else if (lowFile.includes('site') || lowFile.includes('master') || lowFile.includes('배치')) {
-                            type = 'Master Plan'; tag = '[TAG: MST]';
+                        if (lowFile.includes('bird') || lowFile.includes('birdseye') || lowFile.includes('조감도')) {
+                            type = 'Bird\'s Eye View'; tag = '[TAG: BEV]'; priority = 1;
+                        } else if (lowFile.includes('perspective view') || lowFile.includes('투시도')) {
+                            type = 'Perspective View'; tag = '[TAG: FPV]'; priority = 2;
+                        } else if (lowFile.includes('eye level') || lowFile.includes('eyelevel')) {
+                            type = 'Eye Level View'; tag = '[TAG: FPV]'; priority = 2;
+                        } else if (lowFile.includes('low angle') || lowFile.includes('lowangle')) {
+                            type = 'Low Angle View'; tag = '[TAG: LAV]'; priority = 2;
                         } else if (lowFile.includes('plan') || lowFile.includes('floor') || lowFile.includes('평면')) {
-                            type = 'Floor Plan'; tag = '[TAG: PLN]';
-                        } else if (lowFile.includes('diagram') || lowFile.includes('concept') || lowFile.includes('다이어그램')) {
-                            type = 'Diagram'; tag = '[TAG: DIA]';
+                            type = 'Floor Plan'; tag = '[TAG: PLN]'; priority = 3;
+                        } else if (lowFile.includes('elevation') || lowFile.includes('입면')) {
+                            type = 'Elevation'; tag = '[TAG: ELV]'; priority = 3;
+                        } else if (lowFile.includes('section') || lowFile.includes('단면')) {
+                            type = 'Section'; tag = '[TAG: SEC]'; priority = 3;
+                        } else if (lowFile.includes('diagram') || lowFile.includes('다이어그램')) {
+                            type = 'Diagram'; tag = '[TAG: DIA]'; priority = 4;
+                        } else if (lowFile.includes('perspective image') || lowFile.includes('내부투시')) {
+                            type = 'Perspective Image'; tag = '[TAG: INT]'; priority = 5;
+                        } else if (lowFile.includes('site') || lowFile.includes('master') || lowFile.includes('배치')) {
+                            type = 'Master Plan'; tag = '[TAG: MST]'; priority = 3;
                         }
 
                         return {
                             src: `/image library/${cat}/${file}`,
                             type: type,
-                            tag: tag
+                            tag: tag,
+                            priority: priority
                         };
                     });
+                
+                // 정렬: 우선순위(조감도->뷰->도면->다이어그램->내부투시) 순, 그 다음 파일명 순
+                items.sort((a, b) => a.priority - b.priority || a.src.localeCompare(b.src));
+                result[cat] = items;
             } else {
                 result[cat] = [];
             }

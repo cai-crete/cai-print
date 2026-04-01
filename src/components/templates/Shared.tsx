@@ -13,43 +13,39 @@ export const getTextStyle = (styles: any[] | undefined, index: number) => {
     return result;
 };
 
-// 보고서 상단 헤더 (Main Title + Company Name)
-export const ReportHeader = ({ title, companyName = "CRE-TE", onTextSelection, pageId, textStyles }: { title: string, companyName?: string, onTextSelection?: (pageId: string, idx: number) => void, pageId: string, textStyles?: any[] }) => (
+// 보고서 상단 헤더 (Main Title + Company Name) — 읽기 전용
+export const ReportHeader = ({ title, textStyles }: { title: string, textStyles?: any[] }) => (
     <div className="inner-header flex justify-between items-start" style={{ marginBottom: '5mm' }}>
-        <div 
-            onMouseUp={() => onTextSelection?.(pageId, -1)}
-            onTouchEnd={() => onTextSelection?.(pageId, -1)}
-            onContextMenu={(e) => e.preventDefault()}
-            data-text-index="-1"
-            className="editable main-title font-black"
+        <div
+            className="main-title font-black"
             style={{ fontSize: '24pt', fontWeight: 800, width: '300mm', maxHeight: '35mm', wordBreak: 'keep-all', overflow: 'hidden', ...getTextStyle(textStyles, -1) }}
         >
             {title}
         </div>
-        <div className="editable comp-name font-bold text-right" style={{ fontSize: '14pt', fontWeight: 700, minWidth: '60mm', padding: '2px 5px' }}>
-            {companyName}
+        <div
+            className="comp-name font-bold text-right"
+            style={{ fontSize: '14pt', fontWeight: 700, minWidth: '60mm', padding: '2px 5px', ...getTextStyle(textStyles, 3) }}
+        >
+            CRE-TE
         </div>
     </div>
 );
 
-// 보고서 서브 헤더 (Sub Title + Index Indicator)
-export const ReportSubHeader = ({ subTitle, indexLabel, onTextSelection, pageId, textStyles, subTitleIdx }: { subTitle: string, indexLabel: string, onTextSelection?: (pageId: string, idx: number) => void, pageId: string, textStyles?: any[], subTitleIdx: number }) => (
+// 보고서 서브 헤더 (Sub Title + Index Indicator) — 읽기 전용
+export const ReportSubHeader = ({ subTitle, indexLabel, textStyles, subTitleIdx }: { subTitle: string, indexLabel: string, textStyles?: any[], subTitleIdx: number }) => (
     <div className="inner-sub-header flex justify-between items-start" style={{ marginBottom: '5mm' }}>
-        <div 
-            onMouseUp={() => onTextSelection?.(pageId, subTitleIdx)}
-            onTouchEnd={() => onTextSelection?.(pageId, subTitleIdx)}
-            onContextMenu={(e) => e.preventDefault()}
-            data-text-index={subTitleIdx}
-            className="editable sub-title-box font-semibold"
+        <div
+            className="sub-title-box font-semibold"
             style={{ fontSize: '16pt', flex: 1, minHeight: '30px', wordBreak: 'keep-all', ...getTextStyle(textStyles, subTitleIdx) }}
         >
             {subTitle}
         </div>
-        <div className="editable index-indicator text-right font-medium" style={{ width: '150mm', fontSize: '12pt' }}>
+        <div className="index-indicator text-right font-medium" style={{ width: '150mm', fontSize: '12pt' }}>
             {indexLabel}
         </div>
     </div>
 );
+
 
 // 보고서 하단 꼬리말(Footer) 공통 컴포넌트
 export const ReportFooter = ({ isCover = false }: { isCover?: boolean }) => (

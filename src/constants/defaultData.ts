@@ -1,23 +1,59 @@
 // src/constants/defaultData.ts
 
 export const DEFAULT_IMAGES = [
-    { src: "/image library/Elevation -1.png", type: "Elevation" },
-    { src: "/image library/Elevation -2.png", type: "Elevation" },
-    { src: "/image library/bird's eye view -1.png", type: "Bird's eye view" },
-    { src: "/image library/diagram -1.jpg", type: "Diagram" },
-    { src: "/image library/diagram -2.jpg", type: "Diagram" },
-    { src: "/image library/diagram -3.png", type: "Diagram" },
-    { src: "/image library/diagram -4.png", type: "Diagram" },
-    { src: "/image library/eye level view -1.png", type: "Eye level view" },
-    { src: "/image library/floor plan -1.jpg", type: "Floor plan" },
-    { src: "/image library/floor plan -2.jpg", type: "Floor plan" },
-    { src: "/image library/low angle view -1.jpeg", type: "Low angle view" },
-    { src: "/image library/low angle view -2.png", type: "Low angle view" },
-    { src: "/image library/low angle view -3.png", type: "Low angle view" },
-    { src: "/image library/perspective view -1.png", type: "Perspective view" },
-    { src: "/image library/perspective view -2.png", type: "Perspective view" },
-    { src: "/image library/perspective view -3.png", type: "Perspective view" },
-    { src: "/image library/section -1.jpg", type: "Section" }
+    // 1. 조감도 (Bird's eye view) - A, B, C 순
+    { src: "/image library/A/bird's eye view -1.png", type: "Bird's eye view", tag: "[TAG: BEV]" },
+    { src: "/image library/B/bird's eye view -1.jpg", type: "Bird's eye view", tag: "[TAG: BEV]" },
+    { src: "/image library/C/bird's eye view -1.jpg", type: "Bird's eye view", tag: "[TAG: BEV]" },
+
+    // 2. 나머지 뷰 (Perspective view, Eye level view, Low angle view) - A, B, C 순
+    { src: "/image library/A/perspective view -1.jpg", type: "Perspective view", tag: "[TAG: FPV]" },
+    { src: "/image library/B/perspective view -1.jpeg", type: "Perspective view", tag: "[TAG: FPV]" },
+    { src: "/image library/C/perspective view -1.jpg", type: "Perspective view", tag: "[TAG: FPV]" },
+    { src: "/image library/C/perspective view -2.jpg", type: "Perspective view", tag: "[TAG: FPV]" },
+    { src: "/image library/A/eye level view -1.jpg", type: "Eye level view", tag: "[TAG: FPV]" },
+    { src: "/image library/C/eye level view -1.jpg", type: "Eye level view", tag: "[TAG: FPV]" },
+    { src: "/image library/A/low angle view -1.jpeg", type: "Low angle view", tag: "[TAG: LAV]" },
+    { src: "/image library/A/low angle view -3.png", type: "Low angle view", tag: "[TAG: LAV]" },
+    { src: "/image library/B/low angle view -1.jpg", type: "Low angle view", tag: "[TAG: LAV]" },
+
+    // 3. 평면/입면/단면 (Floor plan, Elevation, Section) - A, B, C 순
+    { src: "/image library/A/floor plan -1.jpg", type: "Floor plan", tag: "[TAG: PLN]" },
+    { src: "/image library/A/floor plan -2.jpg", type: "Floor plan", tag: "[TAG: PLN]" },
+    { src: "/image library/B/floor plan -1.png", type: "Floor plan", tag: "[TAG: PLN]" },
+    { src: "/image library/B/floor plan -2.png", type: "Floor plan", tag: "[TAG: PLN]" },
+    { src: "/image library/C/floor plan -1.jpg", type: "Floor plan", tag: "[TAG: PLN]" },
+    { src: "/image library/C/floor plan -2.jpg", type: "Floor plan", tag: "[TAG: PLN]" },
+    { src: "/image library/A/elevation -1.png", type: "Elevation", tag: "[TAG: ELV]" },
+    { src: "/image library/B/elevation -1.png", type: "Elevation", tag: "[TAG: ELV]" },
+    { src: "/image library/B/elevation -2.png", type: "Elevation", tag: "[TAG: ELV]" },
+    { src: "/image library/B/elevation -3.png", type: "Elevation", tag: "[TAG: ELV]" },
+    { src: "/image library/B/elevation -4.png", type: "Elevation", tag: "[TAG: ELV]" },
+    { src: "/image library/C/elevation -1.png", type: "Elevation", tag: "[TAG: ELV]" },
+    { src: "/image library/C/elevation -2.png", type: "Elevation", tag: "[TAG: ELV]" },
+    { src: "/image library/C/elevation -3.png", type: "Elevation", tag: "[TAG: ELV]" },
+    { src: "/image library/C/elevation -4.png", type: "Elevation", tag: "[TAG: ELV]" },
+    { src: "/image library/A/section -1.jpg", type: "Section", tag: "[TAG: SEC]" },
+    { src: "/image library/B/section -1.jpg", type: "Section", tag: "[TAG: SEC]" },
+    { src: "/image library/C/section -1.jpg", type: "Section", tag: "[TAG: SEC]" },
+
+    // 4. 다이어그램 (Diagram) - A, B, C 순
+    { src: "/image library/A/diagram -1.jpg", type: "Diagram", tag: "[TAG: DIA]" },
+    { src: "/image library/A/diagram -2.jpg", type: "Diagram", tag: "[TAG: DIA]" },
+    { src: "/image library/B/diagram -1.png", type: "Diagram", tag: "[TAG: DIA]" },
+    { src: "/image library/B/diagram -2.png", type: "Diagram", tag: "[TAG: DIA]" },
+    { src: "/image library/B/diagram -3.jpg", type: "Diagram", tag: "[TAG: DIA]" },
+    { src: "/image library/B/diagram -4.png", type: "Diagram", tag: "[TAG: DIA]" },
+    { src: "/image library/B/diagram -5.png", type: "Diagram", tag: "[TAG: DIA]" },
+    { src: "/image library/C/diagram -1.jpg", type: "Diagram", tag: "[TAG: DIA]" },
+    { src: "/image library/C/diagram -2.jpg", type: "Diagram", tag: "[TAG: DIA]" },
+    { src: "/image library/C/diagram -3.jpg", type: "Diagram", tag: "[TAG: DIA]" },
+
+    // 5. 내부투시 (Perspective image) - A, B, C 순
+    { src: "/image library/A/perspective image -1.jpg", type: "Perspective image", tag: "[TAG: INT]" },
+    { src: "/image library/A/perspective image -2.jpg", type: "Perspective image", tag: "[TAG: INT]" },
+    { src: "/image library/B/perspective image -1.jpg", type: "Perspective image", tag: "[TAG: INT]" },
+    { src: "/image library/C/perspective image -1.jpg", type: "Perspective image", tag: "[TAG: INT]" }
 ];
 
 export const DEFAULT_TEXT_INPUT = `### 1. 패널 메인 타이틀 & 컨셉 (Main Titles)
