@@ -1,7 +1,7 @@
 // src/components/templates/TemplateDrawing.tsx
 import React from 'react';
 import { PageData } from '../../types';
-import { DraggableImage } from './Shared';
+import { DraggableImage, getImageObjectFit } from './Shared';
 
 export function TemplateDrawing({ page, onTextSelection, tocLabel: _tocLabel }: { page: PageData, onTextSelection?: (pageId: string, idx: number) => void, tocLabel?: string }) {
     const TB_BORDER_THICK = '1.5pt solid #000';
@@ -28,7 +28,7 @@ export function TemplateDrawing({ page, onTextSelection, tocLabel: _tocLabel }: 
                 {/* 도면 영역 (좌측) */}
                 <div className="flex-1 relative flex items-center justify-center overflow-hidden" style={{ borderRight: TB_BORDER_THICK }}>
                     {page.content.images[0] ? (
-                        <DraggableImage pageId={page.id} imageIndex={0} src={page.content.images[0]} objectFit="contain" />
+                        <DraggableImage pageId={page.id} imageIndex={0} src={page.content.images[0]} objectFit={getImageObjectFit(page.content.images[0])} />
                     ) : (
                         <div className="text-gray-200 font-black text-4xl uppercase tracking-[0.5em] select-none text-center opacity-40">Drawing Area</div>
                     )}

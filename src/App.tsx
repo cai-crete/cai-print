@@ -511,6 +511,7 @@ export default function App() {
 ## 절대 금지 사항
 - 'No11. print', 'page 01', 'PAGE', 'P.01' 등 시스템/페이지 번호 텍스트를 절대 포함하지 마십시오.
 - 'CRE-TE'를 일반 텍스트 내용에 포함하지 마십시오. (기업명 슬롯 전용)
+- **[강제 사항] 리포트 내지 생성 시, 이미지 배열(\`images\`)의 해당 칸이 비어 있거나 이미지가 할당되지 않은 경우, 그에 대응하는 이미지 설명(text[2], text[4], text[5] 등) 슬롯은 반드시 빈 문자열("")로 제출해야 합니다. 허위로 작성하거나 상상해서 묘사하는 것을 엄격히 금지합니다.**
 
 ## 생성 페이지 수: ${currentNumPages}
 
@@ -535,7 +536,7 @@ export default function App() {
 
 **모든 내지 공통:**
 - title: 반드시 표지(cover)의 title과 동일한 텍스트 (헤더 고정).
-- text[3]: 기업명 - 반드시 "CRE-TE" 고정.
+- text[3]: 기업명 - 반드시 "CRE-TE" 고정 (우측 상단 로고용).
 
 **Body A (이미지 1개):**
 - text[0]: 16pt 페이지 테마 - 이 페이지의 건축 주제 (예: "Site Topology", "Massing Strategy"). 30자 이내.
@@ -545,15 +546,17 @@ export default function App() {
 **Body B (이미지 2개):**
 - text[0]: 16pt 페이지 테마 (30자 이내)
 - text[1]: 11pt 페이지 요약 (최대 75자)
-- text[2]: 11pt 이미지 1 스토리 (3~4줄)
+- text[2]: 11pt 좌측 이미지 1 스토리 (3~4줄)
 - text[3]: 기업명 - 반드시 "CRE-TE" 고정.
+- text[4]: 11pt 우측 이미지 2 스토리 (3~4줄)
 
 **Body C (이미지 3~4개):**
 - text[0]: 16pt 페이지 테마 (30자 이내)
 - text[1]: 11pt 페이지 요약 (최대 75자)
-- text[2]: 11pt 이미지 1 스토리 (3~4줄)
+- text[2]: 11pt 좌측 메인 이미지 스토리 (3~4줄)
 - text[3]: 기업명 - 반드시 "CRE-TE" 고정.
-- text[4]: 11pt 이미지 2 스토리 (3~4줄)
+- text[4]: 11pt 우측 상단 이미지 스토리 (3~4줄)
+- text[5]: 11pt 우측 하단 이미지 스토리 (3~4줄)
 `;
       } else if (currentPurposeForPrompt === 'drawing') {
         purposeSpecificInstructions = `
@@ -842,7 +845,10 @@ ${systemPrompt}
         else if (i === 1 && numPages > 1) pageStructures.push({ type: 'toc', textCount: 12, description: "TOC." });
         else {
           const type = bodyTypes[Math.max(0, i - 2) % bodyTypes.length];
-          pageStructures.push({ type, textCount: type === 'bodyA' ? 3 : type === 'bodyB' ? 4 : 4, description: `Body ${type.charAt(4)}.` });
+          // Body A: 4 (0:theme, 1:summary, 2:story, 3:logo)
+          // Body B: 5 (0:theme, 1:summary, 2:story1, 3:logo, 4:story2)
+          // Body C: 6 (0:theme, 1:summary, 2:story1, 3:logo, 4:story2, 5:story3)
+          pageStructures.push({ type, textCount: type === 'bodyA' ? 4 : type === 'bodyB' ? 5 : 6, description: `Body ${type.charAt(4)}.` });
         }
       }
     }
@@ -866,11 +872,11 @@ ${systemPrompt}
         } else if (p.type === 'toc') {
           return `Page ${i+1} [TOC]: title=표지와동일한프로젝트명, text[0~11]=목차항목(영문), text[3]="CRE-TE"`;
         } else if (p.type === 'bodyA') {
-          return `Page ${i+1} [BODY-A 이미지1개]: title=표지와동일한프로젝트명(절대변경금지), text[0]=페이지테마(30자이내), text[1]=학술요약(75자이내), text[2]=이미지스토리(3~4줄)`;
+          return `Page ${i+1} [BODY-A 이미지1개]: title=표지와동일한프로젝트명, text[0]=페이지테마, text[1]=학술요약, text[2]=이미지스토리(이미지 없을 경우 빈칸), text[3]="CRE-TE"`;
         } else if (p.type === 'bodyB') {
-          return `Page ${i+1} [BODY-B 이미지2개]: title=표지와동일한프로젝트명(절대변경금지), text[0]=페이지테마(30자이내), text[1]=학술요약(75자이내), text[2]=이미지1스토리(3~4줄), text[3]=이미지2스토리(3~4줄)`;
+          return `Page ${i+1} [BODY-B 이미지2개]: title=표지와동일한프로젝트명, text[0]=페이지테마, text[1]=학술요약, text[2]=좌측이미지스토리(없으면빈칸), text[3]="CRE-TE", text[4]=우측이미지스토리(없으면빈칸)`;
         } else if (p.type === 'bodyC') {
-          return `Page ${i+1} [BODY-C 이미지3~4개]: title=표지와동일한프로젝트명(절대변경금지), text[0]=페이지테마(30자이내), text[1]=학술요약(75자이내), text[2]=이미지1스토리(3~4줄), text[3]=이미지2스토리(3~4줄)`;
+          return `Page ${i+1} [BODY-C 이미지3~4개]: title=표지와동일한프로젝트명, text[0]=페이지테마, text[1]=학술요약, text[2]=좌측메인스토리(없으면빈칸), text[3]="CRE-TE", text[4]=우측상단스토리(없으면빈칸), text[5]=우측하단스토리(없으면빈칸)`;
         } else if (p.type === 'drawing') {
           return `Page ${i+1} [DRAWING 도면]: title=프로젝트명(5~16자 영문대문자), text[0]=NOTE(기술유의사항2~4줄), text[1]="CRE-TE", text[2]=엔지니어이니셜(예:K.H.KIM), text[3]="CRE-TE GROUP", text[4]=스케일(예:1/100), text[5]=도면번호(예:A-101), text[6]="${String(i+1).padStart(2,'0')} / ${pageStructures.length}", text[7]=파일명(예:PROJECT_PLN_01.DWG)`;
         } else if (p.type === 'panel') {
@@ -1016,12 +1022,36 @@ ${slotInstructions}
       let imgCount = structure.type === 'panel' ? 10 : (structure.type === 'bodyB' ? 2 : (structure.type === 'bodyC' ? 3 : 1));
       if (structure.type === 'toc') imgCount = 0;
       const alloc = getNextImagesIntelligently(imgCount, structure.type);
+
+      // [Hard-Clear] 이미지가 단 하나도 없는 경우 텍스트/제목 전체 초기화 로직 강제 적용
+      const hasAnyImage = alloc.images.some(img => img && img.trim() !== '');
+      let finalTitle = (aiContent.title && aiContent.title !== `Page ${i + 1}`) ? aiContent.title : currentTitle;
+      let finalTextArray = [...textArray];
+
+      if (!hasAnyImage && structure.type !== 'toc') {
+        // 이미지가 전무한 경우 (목차 제외): 제목, 부제목, 요약, 설명 등 모든 요소를 비웁니다.
+        finalTitle = "";
+        finalTextArray = finalTextArray.map(() => "");
+      } else {
+        // 이미지가 일부라도 있는 경우: 개별 슬롯에 매칭되는 이미지가 없으면 해당 설명만 비웁니다.
+        if (structure.type === 'bodyA') {
+          if (!alloc.images[0]) if (finalTextArray[2]) finalTextArray[2] = "";
+        } else if (structure.type === 'bodyB') {
+          if (!alloc.images[0]) if (finalTextArray[2]) finalTextArray[2] = "";
+          if (!alloc.images[1]) if (finalTextArray[4]) finalTextArray[4] = "";
+        } else if (structure.type === 'bodyC') {
+          if (!alloc.images[0]) if (finalTextArray[2]) finalTextArray[2] = "";
+          if (!alloc.images[1]) if (finalTextArray[4]) finalTextArray[4] = "";
+          if (!alloc.images[2]) if (finalTextArray[5]) finalTextArray[5] = "";
+        }
+      }
+
       newPages.push({
         id: `page-${i}`,
         type: structure.type as any,
         content: {
-          title: (aiContent.title && aiContent.title !== `Page ${i + 1}`) ? aiContent.title : currentTitle,
-          text: textArray.slice(0, structure.textCount),
+          title: finalTitle,
+          text: finalTextArray.slice(0, structure.textCount),
           images: alloc.images,
           imageDimensions: alloc.dims,
           imageTags: alloc.tags,
@@ -1678,7 +1708,11 @@ ${slotInstructions}
                   </div>
                 )}
                 <button
-                  onClick={() => setPurpose('video')}
+                  onClick={() => {
+                    setPurpose('video');
+                    setSelectedImages([]); // Video 모드 전환 시 이미지 선택 초기화 강제
+                    setHeroImage(null);
+                  }}
                   className={cn("w-full border py-2 text-sm font-medium transition-colors", purpose === 'video' ? "bg-gray-800 text-white border-gray-800" : "border-gray-300 hover:bg-gray-50")}
                 >
                   Video

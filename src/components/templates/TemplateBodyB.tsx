@@ -1,7 +1,7 @@
 // src/components/templates/TemplateBodyB.tsx
 import React from 'react';
 import { PageData, Purpose } from '../../types';
-import { getTextStyle, ReportFooter, DraggableImage, ReportHeader, ReportSubHeader } from './Shared';
+import { getTextStyle, ReportFooter, DraggableImage, ReportHeader, ReportSubHeader, getImageObjectFit } from './Shared';
 
 export function TemplateBodyB({ page, pageIndex, purpose, onTextSelection, tocLabel }: { page: PageData, pageIndex: number, purpose: Purpose, onTextSelection?: (pageId: string, idx: number) => void, tocLabel?: string }) {
     const images = page.content.images || [];
@@ -38,13 +38,14 @@ export function TemplateBodyB({ page, pageIndex, purpose, onTextSelection, tocLa
                 {[0, 1].map((idx) => (
                     <div key={idx} className="flex flex-col flex-1 h-full">
                         <div className="img-box bg-gray-50 border border-gray-200 flex-1 overflow-hidden">
-                            {images[idx] && <DraggableImage pageId={page.id} imageIndex={idx} src={images[idx]} objectFit="contain" />}
+                            {images[idx] && <DraggableImage pageId={page.id} imageIndex={idx} src={images[idx]} objectFit={getImageObjectFit(images[idx])} />}
                         </div>
                         <div
                             className="desc-vertical leading-relaxed mt-[5mm]"
-                            style={{ height: '3.2em', fontSize: '11pt', ...getTextStyle(page.content.textStyles, idx + 2) }}
+                            style={{ height: '3.2em', fontSize: '11pt', ...getTextStyle(page.content.textStyles, idx === 0 ? 2 : 4) }}
                         >
-                            {text[idx + 2] || ""}
+                            {/* idx 0 -> text[2], idx 1 -> text[4] (text[3]은 로고용) */}
+                            {text[idx === 0 ? 2 : 4] || ""}
                         </div>
                     </div>
                 ))}

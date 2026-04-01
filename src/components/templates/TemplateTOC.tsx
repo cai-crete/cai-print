@@ -16,7 +16,11 @@ export interface TocGroup {
 }
 
 export function computeTocGroups(contentPages: PageData[]): TocGroup[] {
-  const total = contentPages.length;
+  // [수정] 이미지가 하나도 없는 진짜 빈 페이지는 제외 (이미 App.tsx에서 텍스트가 지워졌으므로)
+  const filteredPages = contentPages.filter(p => 
+    p.content.images && p.content.images.some(img => img && img.trim() !== '')
+  );
+  const total = filteredPages.length;
   if (total === 0) return [];
 
   const slots = Math.min(total, MAX_TOC_SLOTS);
@@ -28,7 +32,7 @@ export function computeTocGroups(contentPages: PageData[]): TocGroup[] {
 
   for (let s = 0; s < slots; s++) {
     const count = base + (s < remainder ? 1 : 0);
-    const slotPages = contentPages.slice(pageIdx, pageIdx + count);
+    const slotPages = filteredPages.slice(pageIdx, pageIdx + count);
     pageIdx += count;
 
     const firstPage = slotPages[0];
@@ -49,7 +53,12 @@ export function computeTocGroups(contentPages: PageData[]): TocGroup[] {
  * 목차 번호 체계: [번호]. [대주제]: [소주제] 형식 적용
  */
 export function computeTocLabels(allPages: PageData[]): Map<string, string> {
-  const contentPages = allPages.filter(p => p.type !== 'cover' && p.type !== 'toc');
+  const contentPages = allPages.filter(p => 
+    p.type !== 'cover' && 
+    p.type !== 'toc' && 
+    p.content.images && 
+    p.content.images.some(img => img && img.trim() !== '')
+  );
   const groups = computeTocGroups(contentPages);
   const labelMap = new Map<string, string>();
 
@@ -74,7 +83,12 @@ interface TemplateTOCProps {
 }
 
 export function TemplateTOC({ page, allPages }: TemplateTOCProps) {
-  const contentPages = allPages ? allPages.filter(p => p.type !== 'cover' && p.type !== 'toc') : [];
+  const contentPages = allPages ? allPages.filter(p => 
+    p.type !== 'cover' && 
+    p.type !== 'toc' && 
+    p.content.images && 
+    p.content.images.some(img => img && img.trim() !== '')
+  ) : [];
   const useDynamic = contentPages.length > 0;
 
   // 동적 그룹 추출

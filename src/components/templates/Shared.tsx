@@ -162,3 +162,25 @@ export const DraggableImage = ({
         </div>
     );
 };
+
+/**
+ * 이미지의 성격에 따라 최적의 object-fit 속성을 반환합니다.
+ * 다이어그램, 도면 등은 잘림 방지를 위해 'contain'을, 
+ * 일반 건축 사진은 레이아웃 충전도를 위해 'cover'를 권장합니다.
+ */
+export const getImageObjectFit = (src: string, tag?: string): "contain" | "cover" => {
+    if (!src) return "cover";
+    const s = src.toLowerCase();
+    // 1. 경로 또는 파일명에 기술적 이미지 키워드가 포함된 경우
+    const isTechnical = s.includes('diagram') || 
+                        s.includes('drawing') || 
+                        s.includes('draft') ||
+                        s.includes('plan') ||
+                        s.includes('section') ||
+                        s.includes('elevation');
+    
+    // 2. 태그가 도면 관련인 경우
+    const isDrawingTag = ['[TAG: PLN]', '[TAG: ELV]', '[TAG: SEC]'].includes(tag || '');
+    
+    return (isTechnical || isDrawingTag) ? "contain" : "cover";
+};

@@ -1,7 +1,7 @@
 // src/components/templates/TemplateBodyA.tsx
 import React from 'react';
 import { PageData, Purpose } from '../../types';
-import { getTextStyle, ReportFooter, DraggableImage, ReportHeader, ReportSubHeader } from './Shared';
+import { getTextStyle, ReportFooter, DraggableImage, ReportHeader, ReportSubHeader, getImageObjectFit } from './Shared';
 
 export function TemplateBodyA({ page, pageIndex, purpose, onTextSelection, tocLabel }: { page: PageData, pageIndex: number, purpose: Purpose, onTextSelection?: (pageId: string, idx: number) => void, tocLabel?: string }) {
     const images = page.content.images || [];
@@ -36,7 +36,7 @@ export function TemplateBodyA({ page, pageIndex, purpose, onTextSelection, tocLa
             <div className="flex gap-[10mm] flex-1 overflow-hidden">
                 <div className="flex flex-col flex-1 h-full">
                     <div className="img-box bg-gray-50 border border-gray-200 flex-1 overflow-hidden">
-                        {images[0] && <DraggableImage pageId={page.id} imageIndex={0} src={images[0]} objectFit="contain" />}
+                        {images[0] && <DraggableImage pageId={page.id} imageIndex={0} src={images[0]} objectFit={getImageObjectFit(images[0])} />}
                     </div>
                     <div
                         className="desc-vertical leading-relaxed mt-[5mm]"

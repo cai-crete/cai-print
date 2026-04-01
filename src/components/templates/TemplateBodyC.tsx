@@ -1,7 +1,7 @@
 // src/components/templates/TemplateBodyC.tsx
 import React from 'react';
 import { PageData, Purpose } from '../../types';
-import { getTextStyle, ReportFooter, DraggableImage, ReportHeader, ReportSubHeader } from './Shared';
+import { getTextStyle, ReportFooter, DraggableImage, ReportHeader, ReportSubHeader, getImageObjectFit } from './Shared';
 
 export function TemplateBodyC({ page, pageIndex, purpose, onTextSelection, tocLabel }: { page: PageData, pageIndex: number, purpose: Purpose, onTextSelection?: (pageId: string, idx: number) => void, tocLabel?: string }) {
     const images = page.content.images || [];
@@ -38,7 +38,7 @@ export function TemplateBodyC({ page, pageIndex, purpose, onTextSelection, tocLa
                 {/* 좌측: 세로형 레이아웃 — 이미지0 + 이미지 스토리 text[2] */}
                 <div className="flex flex-col flex-1 h-full">
                     <div className="img-box bg-gray-50 border border-gray-200 flex-1 overflow-hidden">
-                        {images[0] && <DraggableImage pageId={page.id} imageIndex={0} src={images[0]} objectFit="contain" />}
+                        {images[0] && <DraggableImage pageId={page.id} imageIndex={0} src={images[0]} objectFit={getImageObjectFit(images[0])} />}
                     </div>
                     <div
                         className="desc-vertical leading-relaxed mt-[5mm]"
@@ -53,14 +53,14 @@ export function TemplateBodyC({ page, pageIndex, purpose, onTextSelection, tocLa
                     {[1, 2].map((imgIdx, loopIdx) => (
                         <div key={imgIdx} className="flex flex-1 gap-[10mm] overflow-hidden">
                             <div className="img-box bg-gray-50 border border-gray-200 flex-[1.36] overflow-hidden">
-                                {images[imgIdx] && <DraggableImage pageId={page.id} imageIndex={imgIdx} src={images[imgIdx]} objectFit="contain" />}
+                                {images[imgIdx] && <DraggableImage pageId={page.id} imageIndex={imgIdx} src={images[imgIdx]} objectFit={getImageObjectFit(images[imgIdx])} />}
                             </div>
                             <div
                                 className="desc-horizontal leading-relaxed flex-[0.64] h-full flex items-center border-b border-gray-200"
-                                style={{ padding: '0 5mm', fontSize: '11pt', ...getTextStyle(page.content.textStyles, 3) }}
+                                style={{ padding: '0 5mm', fontSize: '11pt', ...getTextStyle(page.content.textStyles, loopIdx === 0 ? 4 : 5) }}
                             >
-                                {/* 우측 두 이미지 공통 설명 → text[3] */}
-                                {text[3] || ""}
+                                {/* loopIdx 0 -> text[4], loopIdx 1 -> text[5] (text[3]은 로고용으로 보호) */}
+                                {text[loopIdx === 0 ? 4 : 5] || ""}
                             </div>
                         </div>
                     ))}
