@@ -10,6 +10,7 @@ export function TemplatePanel({ page, orientation, onTextSelection }: { page: Pa
     const titles = page.content.imageTitles || [];
     const heroImg = images[0] ? { src: images[0], tag: tags[0], title: titles[0] } : null;
     const subImgs = images.slice(1).map((src, i) => ({ src, tag: tags[i + 1], title: titles[i + 1] }));
+    const titleText = (page.content.title || '').slice(0, 10);
 
     // Refs for Auto-fit
     const titleRef = useRef<HTMLDivElement>(null);
@@ -60,7 +61,7 @@ export function TemplatePanel({ page, orientation, onTextSelection }: { page: Pa
                         className="font-black text-black leading-[1.0] tracking-[-4px] whitespace-nowrap"
                         style={{ fontSize: '140pt', alignSelf: 'start', ...getTextStyle(page.content.textStyles, -1) }}
                     >
-                        {page.content.title}
+                        {titleText}
                     </div>
                 </div>
                 <div className="text-cell overflow-hidden flex flex-col" style={{ gridColumn: '3 / 5', gridRow: '2' }}>
@@ -145,10 +146,10 @@ export function TemplatePanel({ page, orientation, onTextSelection }: { page: Pa
                     </div>
                 </div>
 
-                <div className="bg-gray-100 overflow-hidden" style={{ gridColumn: '3', gridRow: '6' }}>{subImgs[0] && <DraggableImage pageId={page.id} imageIndex={1} src={subImgs[0].src} objectFit={getImageObjectFit(subImgs[0].src, subImgs[0].tag || '')} />}</div>
-                <div className="bg-gray-100 overflow-hidden" style={{ gridColumn: '4', gridRow: '6' }}>{subImgs[1] && <DraggableImage pageId={page.id} imageIndex={2} src={subImgs[1].src} objectFit={getImageObjectFit(subImgs[1].src, subImgs[1].tag || '')} />}</div>
-                <div className="bg-gray-100 overflow-hidden" style={{ gridColumn: '1', gridRow: '6' }}>{subImgs[2] && <DraggableImage pageId={page.id} imageIndex={3} src={subImgs[2].src} objectFit={getImageObjectFit(subImgs[2].src, subImgs[2].tag || '')} />}</div>
-                <div className="bg-gray-100 overflow-hidden" style={{ gridColumn: '2', gridRow: '6' }}>{subImgs[3] && <DraggableImage pageId={page.id} imageIndex={4} src={subImgs[3].src} objectFit={getImageObjectFit(subImgs[3].src, subImgs[3].tag || '')} />}</div>
+                <div className="bg-gray-100 overflow-hidden" style={{ gridColumn: '1', gridRow: '6' }}>{subImgs[5] && <DraggableImage pageId={page.id} imageIndex={6} src={subImgs[5].src} objectFit={getImageObjectFit(subImgs[5].src, subImgs[5].tag || '')} />}</div>
+                <div className="bg-gray-100 overflow-hidden" style={{ gridColumn: '2', gridRow: '6' }}>{subImgs[6] && <DraggableImage pageId={page.id} imageIndex={7} src={subImgs[6].src} objectFit={getImageObjectFit(subImgs[6].src, subImgs[6].tag || '')} />}</div>
+                <div className="bg-gray-100 overflow-hidden" style={{ gridColumn: '3', gridRow: '6' }}>{subImgs[7] && <DraggableImage pageId={page.id} imageIndex={8} src={subImgs[7].src} objectFit={getImageObjectFit(subImgs[7].src, subImgs[7].tag || '')} />}</div>
+                <div className="bg-gray-100 overflow-hidden" style={{ gridColumn: '4', gridRow: '6' }}>{subImgs[8] && <DraggableImage pageId={page.id} imageIndex={9} src={subImgs[8].src} objectFit={getImageObjectFit(subImgs[8].src, subImgs[8].tag || '')} />}</div>
             </div>
         );
     }
@@ -171,7 +172,7 @@ export function TemplatePanel({ page, orientation, onTextSelection }: { page: Pa
                     className="font-black text-black leading-[1.0] tracking-[-4px] whitespace-nowrap"
                     style={{ fontSize: '140pt', alignSelf: 'start', paddingTop: '5mm', ...getTextStyle(page.content.textStyles, -1) }}
                 >
-                    {page.content.title}
+                    {titleText}
                 </div>
             </div>
             <div className="text-cell overflow-hidden flex flex-col" style={{ gridColumn: '1 / 5', gridRow: '2' }}>

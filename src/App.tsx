@@ -151,8 +151,8 @@ export default function App() {
   const [isLibraryOpen, setIsLibraryOpen] = useState(false);
   const [isHistoryOpen, setIsHistoryOpen] = useState(false);
   const [selectedImages, setSelectedImages] = useState<string[]>([]);
-  const [textInput, setTextInput] = useState(DEFAULT_TEXT_INPUT);
-  const [purpose, setPurpose] = useState<Purpose>('panel');
+  const [textInput, setTextInput] = useState(''); // Initial state is empty string to show placeholder
+  const [purpose, setPurpose] = useState<Purpose | null>(null);
   const [orientation, setOrientation] = useState<Orientation>('portrait');
   const [numPages, setNumPages] = useState(1);
   const [generatedPages, setGeneratedPages] = useState<PageData[]>([]);
@@ -692,6 +692,13 @@ ${systemPrompt}
 
   const handleGenerate = async (overridePurpose?: any, isAutoGenerate: boolean = false, overrideText?: string, overrideTitle?: string) => {
     const promptPurpose = (typeof overridePurpose === 'string') ? overridePurpose as Purpose : purpose;
+
+    // [가드] Purpose가 선택되지 않은 경우 진행 차단
+    if (!promptPurpose) {
+      alert('A. Purpose / Size를 선택해주세요.');
+      return;
+    }
+
     const currentTextInput = overrideText !== undefined ? overrideText : textInput;
     let currentTitle = overrideTitle !== undefined ? overrideTitle : title;
 
@@ -710,12 +717,12 @@ ${systemPrompt}
       }
     }
 
-    // 비디오 모드: 이미지 선택 여부와 무관하게 video-example-0.5x.mp4 고정 출력
+    // 비디오 모드: 이미지 선택 여부와 무관하게 video-example-1.mp4 고정 출력
     if (promptPurpose === 'video') {
       setIsGenerating(true);
       try {
         await new Promise(r => setTimeout(r, 5000)); // 5초 딜레이 추가
-        const VIDEO_SRC = '/image library/V/video-example-0.5x.mp4';
+        const VIDEO_SRC = '/image library/V/video-example-1.mp4';
         const videoPage: import('./types').PageData = {
           id: 'page-0',
           type: 'video',
@@ -880,7 +887,7 @@ ${systemPrompt}
         } else if (p.type === 'drawing') {
           return `Page ${i+1} [DRAWING 도면]: title=프로젝트명(5~16자 영문대문자), text[0]=NOTE(기술유의사항2~4줄), text[1]="CRE-TE", text[2]=엔지니어이니셜(예:K.H.KIM), text[3]="CRE-TE GROUP", text[4]=스케일(예:1/100), text[5]=도면번호(예:A-101), text[6]="${String(i+1).padStart(2,'0')} / ${pageStructures.length}", text[7]=파일명(예:PROJECT_PLN_01.DWG)`;
         } else if (p.type === 'panel') {
-          return `Page ${i+1} [PANEL 대형판넬]: title=메인타이틀(3단어이내 영문), text[0]=서브타이틀(30자이내), text[1]=본문서사(200~350자), text[2]=소제목A(10자이내 필수), text[3]=소제목A설명(100~180자), text[4]=소제목B(10자이내 필수), text[5]=소제목B설명(100~180자)`;
+          return `Page ${i+1} [PANEL 대형판넬]: title=메인타이틀(8~10자 영문 필수, 칸을 넘지 않게 짧게 작성), text[0]=서브타이틀(30자이내), text[1]=본문서사(200~350자), text[2]=소제목A(10자이내 필수), text[3]=소제목A설명(100~180자), text[4]=소제목B(10자이내 필수), text[5]=소제목B설명(100~180자)`;
         }
         return `Page ${i+1} [${p.type}]: title=프로젝트명, ${Array.from({length: p.textCount}, (_, k) => `text[${k}]=내용`).join(', ')}`;
       }).join('\n');
@@ -941,13 +948,64 @@ ${slotInstructions}
     }
 
 
-    // --- Drawing Restriction: Filter only PLN, ELV, SEC tags for drawing purpose ---
+    // --- Filtering and Grouping for Purpose ---
+    let finalAnalyzed = [...analyzedImages];
     const drawingTags = ['[TAG: PLN]', '[TAG: ELV]', '[TAG: SEC]'];
-    const drawingAnalyzedImages = currentPurpose === 'drawing' 
-      ? analyzedImages.filter(i => drawingTags.includes(i.tag))
-      : analyzedImages;
 
-    let imgPool = [...drawingAnalyzedImages];
+    if (currentPurpose === 'drawing') {
+      finalAnalyzed = finalAnalyzed.filter(i => drawingTags.includes(i.tag));
+    }
+    let reportHero: any = null;
+    if (currentPurpose === 'report') {
+      const heroIdx = finalAnalyzed.findIndex(img => img.src.toLowerCase().includes("bird's eye view -1"));
+      if (heroIdx > -1) {
+        [reportHero] = finalAnalyzed.splice(heroIdx, 1);
+      }
+      
+      if (currentCategory === 'A') {
+        const REPORT_FORCED = [
+          { pattern: "low angle view -1", fallback: "LAV" },
+          { pattern: "eye level view -1", fallback: "FPV" },
+          { pattern: "section -1", fallback: "SEC" },
+          { pattern: "perspective image -1", fallback: "LAV" },
+          { pattern: "perspective image -2", fallback: "FPV" },
+          { pattern: "perspective view -1", fallback: "LAV" },
+          { pattern: "diagram -1", fallback: "DIA" },
+          { pattern: "diagram -2", fallback: "DIA" },
+          { pattern: "elevation -1", fallback: "ELV" },
+          { pattern: "floor plan -1", fallback: "PLN" },
+          { pattern: "floor plan -2", fallback: "PLN" }
+        ];
+
+        const sortedReport: any[] = [];
+        let pool = [...finalAnalyzed];
+        
+        REPORT_FORCED.forEach(forced => {
+          let match = pool.find(i => i.src.toLowerCase().includes(forced.pattern));
+          if (!match) match = pool.find(i => i.tag.includes(forced.fallback)) || pool[0];
+          
+          if (match) {
+            sortedReport.push(match);
+            pool = pool.filter(i => i !== match);
+          } else {
+            sortedReport.push({ src: '', dim: {width:1,height:1}, tag: '', title: '' });
+          }
+        });
+        
+        finalAnalyzed = sortedReport;
+      } else {
+        const views = finalAnalyzed.filter(i => ['[TAG: FPV]', '[TAG: LAV]', '[TAG: INT]'].includes(i.tag));
+        const diagrams = finalAnalyzed.filter(i => i.tag === '[TAG: DIA]');
+        const tech = finalAnalyzed.filter(i => drawingTags.includes(i.tag));
+        const etc = finalAnalyzed.filter(i => 
+          !views.includes(i) && !diagrams.includes(i) && !tech.includes(i)
+        );
+        
+        finalAnalyzed = [...views, ...diagrams, ...tech, ...etc];
+      }
+    }
+
+    let imgPool = [...finalAnalyzed];
 
     const getNextImagesIntelligently = (count: number, type: string) => {
       if (type === 'panel') {
@@ -956,47 +1014,146 @@ ${slotInstructions}
         const tagsResult: string[] = [];
         const titlesResult: string[] = [];
 
-        const HERO_TAGS = ['[TAG: BEV]', '[TAG: FPV]', '[TAG: LAV]'];
-        const MAIN_TAGS = ['[TAG: PLN]', '[TAG: ELV]', '[TAG: SEC]', '[TAG: MST]'];
-        const SUPPORT_TAGS = ['[TAG: DIA]', '[TAG: INT]'];
-
         let pool = [...imgPool];
-        
-        // 1. Hero Slot (Slot 0)
-        const heroMatch = pool.find(i => HERO_TAGS.includes(i.tag)) || pool[0];
-        if (heroMatch) {
-          result.push(heroMatch.src); dimsResult.push(heroMatch.dim);
-          tagsResult.push(heroMatch.tag); titlesResult.push(heroMatch.title);
-          pool = pool.filter(i => i.src !== heroMatch.src);
-        }
 
-        // 2. Main Info Slots (Slot 1-2)
-        for (let i = 0; i < 2; i++) {
-          const mainMatch = pool.find(i => MAIN_TAGS.includes(i.tag)) || pool[0];
-          if (mainMatch) {
-            result.push(mainMatch.src); dimsResult.push(mainMatch.dim);
-            tagsResult.push(mainMatch.tag); titlesResult.push(mainMatch.title);
-            pool = pool.filter(i => i.src !== mainMatch.src);
-          } else {
+        if (orientation === 'portrait' && currentCategory === 'A') {
+          // Portrait Library A sequence (7 images)
+          const PORTRAIT_FORCED = [
+            { pattern: "bird's eye view -1", fallback: "BEV" },
+            { pattern: "floor plan -1", fallback: "PLN" },
+            { pattern: "floor plan -2", fallback: "PLN" },
+            { pattern: "diagram -1", fallback: "DIA" },
+            { pattern: "diagram -2", fallback: "DIA" },
+            { pattern: "perspective view -1", fallback: "LAV" },
+            { pattern: "section -1", fallback: "SEC" }
+          ];
+
+          PORTRAIT_FORCED.forEach(forced => {
+            let match = pool.find(i => i.src.toLowerCase().includes(forced.pattern));
+            if (!match) match = pool.find(i => i.tag.includes(forced.fallback)) || pool[0];
+            
+            if (match) {
+              result.push(match.src); dimsResult.push(match.dim);
+              tagsResult.push(match.tag); titlesResult.push(match.title);
+              pool = pool.filter(i => i.src !== match.src);
+            } else {
+              result.push(''); dimsResult.push({ width: 1, height: 1 });
+              tagsResult.push(''); titlesResult.push('');
+            }
+          });
+
+          while (result.length < 10) {
             result.push(''); dimsResult.push({ width: 1, height: 1 });
             tagsResult.push(''); titlesResult.push('');
           }
-        }
+        } else if (orientation === 'landscape' && currentCategory === 'A') {
+          // Landscape Library A sequence (5 entries, specifically mapped to slots 0, 6, 7, 8, 9)
+          const LANDSCAPE_FORCED = [
+            { pattern: "bird's eye view -1", fallback: "BEV" },       // Slot 0 (Hero)
+            { pattern: "perspective view -1", fallback: "LAV" },     // Slot 6 (Bottom 1)
+            { pattern: "section -1", fallback: "SEC" },              // Slot 7 (Bottom 2)
+            { pattern: "perspective image -1", fallback: "LAV" },     // Slot 8 (Bottom 3)
+            { pattern: "perspective image -2", fallback: "FPV" }      // Slot 9 (Bottom 4)
+          ];
 
-        // 3. Support Slots (Slot 3-9)
-        while (result.length < 10) {
-          const supportMatch = pool.find(i => SUPPORT_TAGS.includes(i.tag)) || pool[0];
-          if (supportMatch) {
-            result.push(supportMatch.src); dimsResult.push(supportMatch.dim);
-            tagsResult.push(supportMatch.tag); titlesResult.push(supportMatch.title);
-            pool = pool.filter(i => i.src !== supportMatch.src);
-          } else {
-            result.push(''); dimsResult.push({ width: 1, height: 1 });
-            tagsResult.push(''); titlesResult.push('');
+          // Initialize result array with 10 empty entries
+          const finalResult = Array(10).fill('');
+          const finalDims = Array(10).fill({ width: 1, height: 1 });
+          const finalTags = Array(10).fill('');
+          const finalTitles = Array(10).fill('');
+
+          const targetSlots = [0, 6, 7, 8, 9];
+          LANDSCAPE_FORCED.forEach((forced, idx) => {
+            let match = pool.find(i => i.src.toLowerCase().includes(forced.pattern));
+            if (!match) match = pool.find(i => i.tag.includes(forced.fallback)) || pool[0];
+
+            if (match) {
+              const slot = targetSlots[idx];
+              finalResult[slot] = match.src;
+              finalDims[slot] = match.dim;
+              finalTags[slot] = match.tag;
+              finalTitles[slot] = match.title;
+              pool = pool.filter(i => i.src !== match.src);
+            }
+          });
+
+          return { images: finalResult, dims: finalDims, tags: finalTags, titles: finalTitles };
+        } else {
+          const HERO_TAGS = ['[TAG: BEV]', '[TAG: FPV]', '[TAG: LAV]'];
+          const MAIN_TAGS = ['[TAG: PLN]', '[TAG: ELV]', '[TAG: SEC]', '[TAG: MST]'];
+          const SUPPORT_TAGS = ['[TAG: DIA]', '[TAG: INT]'];
+
+          // 1. Hero Slot (Slot 0)
+          const heroMatch = pool.find(i => HERO_TAGS.includes(i.tag)) || pool[0];
+          if (heroMatch) {
+            result.push(heroMatch.src); dimsResult.push(heroMatch.dim);
+            tagsResult.push(heroMatch.tag); titlesResult.push(heroMatch.title);
+            pool = pool.filter(i => i.src !== heroMatch.src);
+          }
+
+          // 2. Main Info Slots (Slot 1-2)
+          for (let i = 0; i < 2; i++) {
+            const mainMatch = pool.find(i => MAIN_TAGS.includes(i.tag)) || pool[0];
+            if (mainMatch) {
+              result.push(mainMatch.src); dimsResult.push(mainMatch.dim);
+              tagsResult.push(mainMatch.tag); titlesResult.push(mainMatch.title);
+              pool = pool.filter(i => i.src !== mainMatch.src);
+            } else {
+              result.push(''); dimsResult.push({ width: 1, height: 1 });
+              tagsResult.push(''); titlesResult.push('');
+            }
+          }
+
+          // 3. Support Slots (Slot 3-5)
+          for (let i = 0; i < 3; i++) {
+            const supportMatch = pool.find(i => SUPPORT_TAGS.includes(i.tag)) || pool[0];
+            if (supportMatch) {
+              result.push(supportMatch.src); dimsResult.push(supportMatch.dim);
+              tagsResult.push(supportMatch.tag); titlesResult.push(supportMatch.title);
+              pool = pool.filter(i => i.src !== supportMatch.src);
+            } else {
+              result.push(''); dimsResult.push({ width: 1, height: 1 });
+              tagsResult.push(''); titlesResult.push('');
+            }
+          }
+
+          // 4. Forced Bottom 4 Slots (Slot 1-4) for matching Landscape left-to-right sequence
+          const FORCED_SEQUENCE = [
+            { pattern: "floor plan -1", fallback: "PLN" },
+            { pattern: "floor plan -2", fallback: "PLN" },
+            { pattern: "perspective", fallback: "LAV" },
+            { pattern: "perspective", fallback: "LAV" }
+          ];
+
+          FORCED_SEQUENCE.forEach(forced => {
+            let match = pool.find(i => i.src.toLowerCase().includes(forced.pattern));
+            if (!match) match = pool.find(i => i.tag.includes(forced.fallback)) || pool[0];
+            
+            if (match) {
+              result.push(match.src); dimsResult.push(match.dim);
+              tagsResult.push(match.tag); titlesResult.push(match.title);
+              pool = pool.filter(i => i.src !== match.src);
+            } else {
+              result.push(''); dimsResult.push({ width: 1, height: 1 });
+              tagsResult.push(''); titlesResult.push('');
+            }
+          });
+
+          // 5. Remaining Support Slots (Slot 5-9)
+          while (result.length < 10) {
+            const supportMatch = pool.find(i => SUPPORT_TAGS.includes(i.tag)) || pool[0];
+            if (supportMatch) {
+              result.push(supportMatch.src); dimsResult.push(supportMatch.dim);
+              tagsResult.push(supportMatch.tag); titlesResult.push(supportMatch.title);
+              pool = pool.filter(i => i.src !== supportMatch.src);
+            } else {
+              result.push(''); dimsResult.push({ width: 1, height: 1 });
+              tagsResult.push(''); titlesResult.push('');
+            }
           }
         }
 
-        if (imgPool.length === 0) imgPool = [...drawingAnalyzedImages];
+        if (imgPool.length === 0) imgPool = [...finalAnalyzed];
         return { images: result, dims: dimsResult, tags: tagsResult, titles: titlesResult };
       } else {
         const result = []; const dimsResult = []; const tagsResult = []; const titlesResult = [];
@@ -1021,7 +1178,33 @@ ${slotInstructions}
       while (textArray.length < structure.textCount) textArray.push('');
       let imgCount = structure.type === 'panel' ? 10 : (structure.type === 'bodyB' ? 2 : (structure.type === 'bodyC' ? 3 : 1));
       if (structure.type === 'toc') imgCount = 0;
-      const alloc = getNextImagesIntelligently(imgCount, structure.type);
+      let alloc: any;
+      if (currentPurpose === 'report' && currentCategory === 'A') {
+        // [Library A Report] Deterministic allocation
+        if (i === 0) {
+          // Cover uses Hero
+          alloc = { images: [reportHero?.src || ''], dims: [reportHero?.dim || {width:1,height:1}], tags: [reportHero?.tag || ''], titles: [reportHero?.title || ''] };
+        } else if (structure.type === 'toc') {
+          alloc = { images: [], dims: [], tags: [], titles: [] };
+        } else if (i === 2 && reportHero) {
+          // Page 3 Hero 고정
+          alloc = { images: [reportHero.src], dims: [reportHero.dim], tags: [reportHero.tag], titles: [reportHero.title] };
+        } else {
+          // Others consume from imgPool (which is sortedReport)
+          alloc = getNextImagesIntelligently(imgCount, structure.type);
+        }
+      } else if (currentPurpose === 'report' && i === 2 && reportHero) {
+        // [Library B/C Report] Force Bird's Eye View -1 for Page 3 (index 2)
+        const remaining = getNextImagesIntelligently(imgCount - 1, structure.type);
+        alloc = {
+          images: [reportHero.src, ...remaining.images],
+          dims: [reportHero.dim, ...remaining.dims],
+          tags: [reportHero.tag, ...remaining.tags],
+          titles: [reportHero.title, ...remaining.titles]
+        };
+      } else {
+        alloc = getNextImagesIntelligently(imgCount, structure.type);
+      }
 
       // [Hard-Clear] 이미지가 단 하나도 없는 경우 텍스트/제목 전체 초기화 로직 강제 적용
       const hasAnyImage = alloc.images.some(img => img && img.trim() !== '');
@@ -1164,6 +1347,14 @@ ${slotInstructions}
       // 폰트 완전 로드 보장 (상단 텍스트 잘림 현상 방지)
       await document.fonts.ready;
 
+      const purposeMap: Record<string, string> = {
+        'report': 'report',
+        'drawing': 'drawing & specification',
+        'panel': 'panel',
+        'video': 'video'
+      };
+      const purposeName = purposeMap[purpose] || purpose;
+
       if (exportFormat === 'pdf') {
         const pdf = new jsPDF({
           orientation: firstEl.offsetWidth > firstEl.offsetHeight ? 'landscape' : 'portrait',
@@ -1193,25 +1384,25 @@ ${slotInstructions}
 
           pdf.addImage(imgData, 'JPEG', 0, 0, el.offsetWidth, el.offsetHeight);
         }
-        pdf.save(`${title || 'document'}.pdf`);
+        pdf.save(`${purposeName}.pdf`);
       } else if (exportFormat === 'video') {
-        // video-example-0.5x.mp4 직접 다운로드
+        // video-example-1.mp4 직접 다운로드
         try {
-          const VIDEO_SRC = '/image library/V/video-example-0.5x.mp4';
+          const VIDEO_SRC = '/image library/V/video-example-1.mp4';
           const res = await fetch(VIDEO_SRC);
           if (!res.ok) throw new Error('Video file not found');
           const blob = await res.blob();
           const url = URL.createObjectURL(blob);
           const a = document.createElement('a');
           a.href = url;
-          a.download = 'video-example-0.5x.mp4';
+          a.download = `${purposeName}.mp4`;
           document.body.appendChild(a);
           a.click();
           document.body.removeChild(a);
           URL.revokeObjectURL(url);
         } catch (e) {
           console.error('MP4 download error:', e);
-          alert('영상 다운로드에 실패했습니다. public/image library/V/video-example-0.5x.mp4 파일을 확인해 주세요.');
+          alert('영상 다운로드에 실패했습니다. public/image library/V/video-example-1.mp4 파일을 확인해 주세요.');
         }
 
       } else {
@@ -1237,7 +1428,7 @@ ${slotInstructions}
               );
 
               if (imgBlob) {
-                const fileName = `${title || 'document'}_page_${i + 1}.${exportFormat}`;
+                const fileName = `${purposeName}_page_${i + 1}.${exportFormat}`;
                 const fileHandle = await dirHandle.getFileHandle(fileName, { create: true });
                 const writable = await fileHandle.createWritable();
                 await writable.write(imgBlob);
@@ -1263,7 +1454,7 @@ ${slotInstructions}
         const zip = new ZipConstructor();
 
         // Create a root folder within the zip named after the title
-        const rootFolderName = `${title || 'document'}_images`;
+        const rootFolderName = `${purposeName}_images`;
         const folder = zip.folder(rootFolderName);
 
         for (let i = 0; i < pageElements.length; i++) {
@@ -1663,7 +1854,7 @@ ${slotInstructions}
             </div>
 
             {/* AI 텍스트 자동생성 (Moved to top as requested) */}
-            <section className={cn("transition-all duration-300", ['report', 'drawing', 'panel', 'image'].includes(purpose) ? "opacity-100 block" : "opacity-0 hidden")}>
+            <section className="transition-all duration-300">
               <h3 className="text-sm font-medium mb-3 flex items-center justify-between">
                 <span>AI 텍스트 자동생성</span>
                 {isGeneratingText && <div className="w-3 h-3 border-2 border-gray-300 border-t-black rounded-full animate-spin" />}
@@ -1674,7 +1865,7 @@ ${slotInstructions}
               <textarea
                 value={textInput}
                 onChange={(e) => setTextInput(e.target.value)}
-                placeholder="AI가 작성한 내용이 이곳에 표시되며, 이를 직접 수정하여 최종 반영할 수 있습니다."
+                placeholder="내용을 입력하세요"
                 className="w-full h-32 border border-gray-300 p-3 text-[11px] leading-relaxed resize-none focus:outline-none focus:border-black mb-2"
               />
             </section>
@@ -1696,7 +1887,7 @@ ${slotInstructions}
                   Drawing &amp; Specification
                 </button>
                 <button
-                  onClick={() => setPurpose('panel')}
+                  onClick={() => { setPurpose('panel'); setOrientation(null); }}
                   className={cn("w-full border py-2 text-sm font-medium transition-colors", purpose === 'panel' ? "bg-gray-800 text-white border-gray-800" : "border-gray-300 hover:bg-gray-50")}
                 >
                   Panel
@@ -1708,11 +1899,7 @@ ${slotInstructions}
                   </div>
                 )}
                 <button
-                  onClick={() => {
-                    setPurpose('video');
-                    setSelectedImages([]); // Video 모드 전환 시 이미지 선택 초기화 강제
-                    setHeroImage(null);
-                  }}
+                  onClick={() => setPurpose('video')}
                   className={cn("w-full border py-2 text-sm font-medium transition-colors", purpose === 'video' ? "bg-gray-800 text-white border-gray-800" : "border-gray-300 hover:bg-gray-50")}
                 >
                   Video
