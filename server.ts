@@ -53,7 +53,7 @@ app.post('/api/save-images', async (req, res) => {
 // 이미지 라이브러리 목록 API 추가 (유형 분석 로직 확장)
 app.get('/api/list-images', (req, res) => {
     const LIB_DIR = path.join(__dirname, 'public', 'image library');
-    const categories = ['A', 'B', 'C'];
+    const categories = ['A', 'B', 'C', 'D'];
     const result: Record<string, any[]> = {};
 
     try {
