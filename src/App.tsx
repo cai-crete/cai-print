@@ -137,7 +137,8 @@ interface LibraryImage {
 const initialLibraryData = {
   A: DEFAULT_IMAGES.filter(img => img.src.includes('/A/')),
   B: DEFAULT_IMAGES.filter(img => img.src.includes('/B/')),
-  C: DEFAULT_IMAGES.filter(img => img.src.includes('/C/'))
+  C: DEFAULT_IMAGES.filter(img => img.src.includes('/C/')),
+  D: []
 };
 
 export default function App() {
@@ -146,7 +147,7 @@ export default function App() {
   const [title, setTitle] = useState('No11. print');
   const [libraryData, setLibraryData] = useState<Record<string, LibraryImage[]>>(initialLibraryData);
   const [images, setImages] = useState<LibraryImage[]>(initialLibraryData['A']);
-  const [currentCategory, setCurrentCategory] = useState<'A' | 'B' | 'C'>('A');
+  const [currentCategory, setCurrentCategory] = useState<'A' | 'B' | 'C' | 'D'>('A');
   const [historyImages, setHistoryImages] = useState<LibraryImage[]>([]);
   const [isLibraryOpen, setIsLibraryOpen] = useState(false);
   const [isHistoryOpen, setIsHistoryOpen] = useState(false);
@@ -189,8 +190,10 @@ export default function App() {
 
   // Update displayed images when category changes
   useEffect(() => {
-    if (libraryData[currentCategory]?.length > 0) {
+    if (libraryData[currentCategory]) {
       setImages(libraryData[currentCategory]);
+    } else {
+      setImages([]);
     }
   }, [currentCategory, libraryData]);
 
@@ -447,7 +450,12 @@ export default function App() {
         const reader = new FileReader();
         reader.onload = (e) => {
           if (e.target?.result) {
-            setImages(prev => [{ src: e.target!.result as string, type: 'UPLOADED' }, ...prev]);
+            const newImg = { src: e.target!.result as string, type: 'UPLOADED' };
+            setLibraryData(prev => ({
+              ...prev,
+              D: [newImg, ...(prev.D || [])]
+            }));
+            setCurrentCategory('D');
           }
         };
         reader.readAsDataURL(file);
@@ -1575,9 +1583,9 @@ ${slotInstructions}
               <div className="flex items-center gap-1 bg-gray-100 rounded-lg p-0.5">
                 <button 
                   onClick={() => {
-                    const cats: ('A' | 'B' | 'C')[] = ['A', 'B', 'C'];
+                    const cats: ('A' | 'B' | 'C' | 'D')[] = ['A', 'B', 'C', 'D'];
                     const idx = cats.indexOf(currentCategory);
-                    setCurrentCategory(cats[(idx - 1 + 3) % 3]);
+                    setCurrentCategory(cats[(idx - 1 + 4) % 4]);
                   }}
                   className="p-1 hover:bg-white rounded transition-all text-gray-500 hover:text-black"
                 >
@@ -1586,9 +1594,9 @@ ${slotInstructions}
                 <span className="text-[10px] font-black w-4 text-center">{currentCategory}</span>
                 <button 
                   onClick={() => {
-                    const cats: ('A' | 'B' | 'C')[] = ['A', 'B', 'C'];
+                    const cats: ('A' | 'B' | 'C' | 'D')[] = ['A', 'B', 'C', 'D'];
                     const idx = cats.indexOf(currentCategory);
-                    setCurrentCategory(cats[(idx + 1) % 3]);
+                    setCurrentCategory(cats[(idx + 1) % 4]);
                   }}
                   className="p-1 hover:bg-white rounded transition-all text-gray-500 hover:text-black"
                 >
@@ -1604,48 +1612,59 @@ ${slotInstructions}
 
           <div className="flex-1 overflow-y-auto [&::-webkit-scrollbar]:hidden w-full">
             <div className="grid grid-cols-3 gap-2 pb-2">
-              {images.map((imgObj, idx) => {
-                const img = imgObj.src;
-                let typeLabel = imgObj.type;
-                if (!typeLabel) {
-                  const match = img.match(/([^/]+) -\d+\.[a-zA-Z]+$/);
-                  if (match) typeLabel = match[1];
-                }
-                return (
-                  <div key={idx} className="relative group/item aspect-square w-full">
-                    <button
-                      onClick={() => handleImageSelect(img)}
-                      draggable
-                      onDragStart={(e) => handleLibraryImageDragStart(e, img)}
-                      onDragEnd={handleLibraryImageDragEnd}
-                      className={cn(
-                        "w-full h-full border overflow-hidden transition-all rounded-xl block cursor-grab active:cursor-grabbing relative bg-gray-100",
-                        selectedImages.includes(img) ? "border-black shadow-inner ring-2 ring-black/10 ring-inset" : "border-transparent hover:border-gray-300",
-                        draggingImgSrc === img && "ring-4 ring-blue-500 opacity-50 scale-95"
-                      )}
-                    >
-                      <img src={img} alt={`source-${idx}`} className="w-full h-full object-cover pointer-events-none mix-blend-multiply" />
-                      {typeLabel && (
-                        <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/60 via-black/30 to-transparent pt-6 pb-1.5 px-1 text-white text-[9px] leading-none text-center font-bold tracking-tighter truncate drop-shadow-md">
-                          {typeLabel.toUpperCase()}
-                        </div>
-                      )}
-                      {draggingImgSrc === img && (
-                        <div className="absolute inset-0 bg-blue-500/20 flex items-center justify-center backdrop-blur-[1px]">
-                          <div className="w-4 h-4 rounded-full bg-white animate-ping" />
-                        </div>
-                      )}
-                    </button>
-                    <button
-                      onClick={() => setHeroImage(heroImage === img ? null : img)}
-                      className={cn("absolute -top-1.5 -right-1.5 p-1 rounded-full shadow-md opacity-0 group-hover/item:opacity-100 transition-all z-10", heroImage === img ? "opacity-100 bg-yellow-400 text-white hover:bg-yellow-500" : "bg-white text-gray-400 hover:text-black hover:bg-gray-100")}
-                      title="Make Hero Image (1st Priority)"
-                    >
-                      <Crown size={12} strokeWidth={2.5} />
-                    </button>
-                  </div>
-                )
-              })}
+              {images.length === 0 ? (
+                <div className="col-span-3 flex flex-col items-center justify-center h-48 text-gray-400 gap-3">
+                   <div className="w-12 h-12 rounded-full bg-gray-50 flex items-center justify-center border border-gray-100">
+                     <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" className="opacity-40"><rect width="18" height="18" x="3" y="3" rx="2" ry="2" /><circle cx="9" cy="9" r="2" /><path d="m21 15-3.086-3.086a2 2 0 0 0-2.828 0L6 21" /></svg>
+                   </div>
+                   <div className="text-[11px] font-medium text-center leading-relaxed">
+                     저장된 사진이 없습니다.<br />파일을 업로드하세요.
+                   </div>
+                </div>
+              ) : (
+                images.map((imgObj, idx) => {
+                  const img = imgObj.src;
+                  let typeLabel = imgObj.type;
+                  if (!typeLabel) {
+                    const match = img.match(/([^/]+) -\d+\.[a-zA-Z]+$/);
+                    if (match) typeLabel = match[1];
+                  }
+                  return (
+                    <div key={idx} className="relative group/item aspect-square w-full">
+                      <button
+                        onClick={() => handleImageSelect(img)}
+                        draggable
+                        onDragStart={(e) => handleLibraryImageDragStart(e, img)}
+                        onDragEnd={handleLibraryImageDragEnd}
+                        className={cn(
+                          "w-full h-full border overflow-hidden transition-all rounded-xl block cursor-grab active:cursor-grabbing relative bg-gray-100",
+                          selectedImages.includes(img) ? "border-black shadow-inner ring-2 ring-black/10 ring-inset" : "border-transparent hover:border-gray-300",
+                          draggingImgSrc === img && "ring-4 ring-blue-500 opacity-50 scale-95"
+                        )}
+                      >
+                        <img src={img} alt={`source-${idx}`} className="w-full h-full object-cover pointer-events-none mix-blend-multiply" />
+                        {typeLabel && (
+                          <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/60 via-black/30 to-transparent pt-6 pb-1.5 px-1 text-white text-[9px] leading-none text-center font-bold tracking-tighter truncate drop-shadow-md">
+                            {typeLabel.toUpperCase()}
+                          </div>
+                        )}
+                        {draggingImgSrc === img && (
+                          <div className="absolute inset-0 bg-blue-500/20 flex items-center justify-center backdrop-blur-[1px]">
+                            <div className="w-4 h-4 rounded-full bg-white animate-ping" />
+                          </div>
+                        )}
+                      </button>
+                      <button
+                        onClick={() => setHeroImage(heroImage === img ? null : img)}
+                        className={cn("absolute -top-1.5 -right-1.5 p-1 rounded-full shadow-md opacity-0 group-hover/item:opacity-100 transition-all z-10", heroImage === img ? "opacity-100 bg-yellow-400 text-white hover:bg-yellow-500" : "bg-white text-gray-400 hover:text-black hover:bg-gray-100")}
+                        title="Make Hero Image (1st Priority)"
+                      >
+                        <Crown size={12} strokeWidth={2.5} />
+                      </button>
+                    </div>
+                  )
+                })
+              )}
             </div>
           </div>
         </div>
